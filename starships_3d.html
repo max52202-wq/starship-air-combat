@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 立體星艦動作展示廳｜9 款 8-BIT 聯邦艦隊</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #040812; color: #e4f4ff;
+      font-family: "Courier New", "Consolas", "Noto Sans TC", "Microsoft JhengHei", monospace;
+    }
+    #app {
+      display: flex; flex-direction: column; width: 100vw; height: 100vh;
+    }
+    /* Top Header */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 8px 14px;
+      background: #081224; border-bottom: 2px solid #2b7bb0;
+      flex-wrap: wrap; z-index: 10;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .hdr-tag {
+      font-size: 10px; letter-spacing: 1.5px; color: #7ee8ff;
+      border: 1px solid #2a85b8; background: rgba(20, 82, 130, 0.35);
+      padding: 2px 7px;
+    }
+    header h1 {
+      font-size: 16px; color: #ffffff; letter-spacing: 2px;
+      text-shadow: 2px 2px 0 #104578;
+    }
+    header h1 span { color: #5ef2ff; }
+    .hdr-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .btn {
+      background: #0f2440; border: 1px solid #3c86bd; color: #d8f2ff;
+      padding: 5px 10px; font-size: 11px; font-family: inherit;
+      cursor: pointer; transition: background 0.12s, border-color 0.12s;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn:hover { background: #193b66; border-color: #6de8ff; color: #fff; }
+    .btn.active { background: #166ea8; border-color: #7df7ff; color: #fff; box-shadow: 0 0 8px rgba(94, 242, 255, 0.35); }
+    .btn.gold { background: #4a3510; border-color: #f4be42; color: #ffe79a; }
+    .btn.gold:hover, .btn.gold.active { background: #704f14; border-color: #ffe278; color: #fff; }
+    .btn.danger { background: #4a1420; border-color: #ff5c72; color: #ffc7cf; }
+    .btn.danger:hover { background: #701d2f; border-color: #ff8c9b; color: #fff; }
+
+    /* Main 3-Column Studio */
+    main {
+      flex: 1; display: grid; grid-template-columns: 228px 1fr 296px;
+      min-height: 0; overflow: hidden;
+    }
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 185px 1fr 245px; }
+    }
+    @media (max-width: 780px) {
+      main { grid-template-columns: 1fr; grid-template-rows: 112px 1fr 220px; }
+    }
+
+    /* Left Ship Roster */
+    #roster-panel {
+      background: #07101f; border-right: 2px solid #1b3d63;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-title {
+      padding: 8px 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      color: #7ee8ff; background: #0a1930; border-bottom: 1px solid #1e4670;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #ship-list {
+      flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 5px;
+    }
+    @media (max-width: 780px) {
+      #ship-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+    }
+    .ship-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px;
+      background: #0c1b33; border: 1px solid #1f446b; cursor: pointer;
+      transition: all 0.12s; flex-shrink: 0;
+    }
+    .ship-item:hover { background: #132a4d; border-color: #4eb8eb; }
+    .ship-item.selected {
+      background: #14375e; border-color: #64f4ff;
+      box-shadow: inset 3px 0 0 #64f4ff, 0 0 10px rgba(94, 242, 255, 0.2);
+    }
+    .ship-item img {
+      width: 42px; height: 42px; image-rendering: pixelated;
+      border: 1px solid #2b5a8a; background: #070b15; flex-shrink: 0;
+    }
+    .ship-item-info { min-width: 0; }
+    .ship-item-no { font-size: 9px; color: #7db4dc; letter-spacing: 1px; }
+    .ship-item-name { font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; }
+    .ship-item-role { font-size: 10px; color: #8fd2f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Center 3D Viewport */
+    #stage-wrap {
+      position: relative; background: #03060f; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    #stage-canvas {
+      width: 100%; height: 100%; display: block;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      cursor: grab;
+    }
+    #stage-canvas:active { cursor: grabbing; }
+
+    .stage-hud-top {
+      position: absolute; top: 10px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      pointer-events: none; gap: 8px;
+    }
+    #action-banner {
+      background: rgba(6, 16, 32, 0.86); border: 2px solid #48e0ff;
+      padding: 6px 12px; box-shadow: 0 0 14px rgba(72, 224, 255, 0.28);
+    }
+    #action-banner .ab-label { font-size: 10px; color: #8cd8f8; letter-spacing: 1.5px; }
+    #action-banner .ab-name { font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 1px; }
+    #action-banner .ab-sub { font-size: 11px; color: #ffd970; margin-top: 2px; }
+
+    .stage-tip {
+      background: rgba(6, 14, 28, 0.78); border: 1px solid #275a8a;
+      padding: 5px 9px; font-size: 10px; color: #a7d4f0; text-align: right; line-height: 1.45;
+    }
+
+    .stage-hud-bottom {
+      position: absolute; bottom: 10px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 10px; pointer-events: none;
+    }
+    #ship-card-hud {
+      background: rgba(6, 15, 30, 0.88); border: 1px solid #2e78b0;
+      padding: 8px 12px; max-width: 480px;
+    }
+    #hud-ship-title { font-size: 14px; font-weight: 700; color: #64f4ff; }
+    #hud-ship-desc { font-size: 11px; color: #c7e4f8; margin-top: 3px; line-height: 1.4; }
+    #hud-ship-sig {
+      font-size: 11px; color: #ffe078; margin-top: 4px;
+      border-top: 1px dashed #255078; padding-top: 4px;
+    }
+    #hud-stats {
+      display: flex; gap: 10px; margin-top: 5px; font-size: 10px; color: #8bc5e8;
+    }
+    #hud-stats strong { color: #fff; }
+
+    /* Right Action Panel */
+    #action-panel {
+      background: #07101f; border-left: 2px solid #1b3d63;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #action-scroll {
+      flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .act-group-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #ffd166;
+      padding: 2px 4px; border-left: 3px solid #ffd166; margin-top: 2px;
+    }
+    .act-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    }
+    .act-btn {
+      background: #0d1f3a; border: 1px solid #2d6699; color: #def4ff;
+      padding: 7px 7px; text-align: left; cursor: pointer;
+      font-family: inherit; transition: all 0.12s; display: flex; flex-direction: column; gap: 2px;
+    }
+    .act-btn:hover { background: #163661; border-color: #66ebff; color: #fff; }
+    .act-btn.active {
+      background: #14588a; border-color: #74f8ff;
+      box-shadow: 0 0 10px rgba(94, 242, 255, 0.4);
+    }
+    .act-btn.special {
+      grid-column: 1 / -1; background: #2d200a; border-color: #f0b840; color: #ffe799;
+    }
+    .act-btn.special:hover, .act-btn.special.active {
+      background: #52390e; border-color: #ffe37d; color: #fff;
+    }
+    .act-head { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+    .act-title { font-size: 11px; font-weight: 700; }
+    .act-key {
+      font-size: 9px; padding: 1px 4px; background: #163356; border: 1px solid #489bd1; color: #9be8ff;
+    }
+    .act-desc { font-size: 9.5px; color: #8cb9d8; line-height: 1.25; }
+
+    .demo-bar {
+      padding: 8px; border-top: 1px solid #1e4670; background: #0a182e;
+      display: flex; gap: 6px;
+    }
+    .demo-bar .btn { flex: 1; justify-content: center; padding: 7px 6px; font-weight: 700; }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #050c18; }
+    ::-webkit-scrollbar-thumb { background: #235482; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="hdr-left">
+        <span class="hdr-tag">8-BIT 3D VOLUMETRIC HANGAR</span>
+        <h1>3D 立體<span>星艦動作展示廳</span></h1>
+      </div>
+      <div class="hdr-controls">
+        <button id="btn-cam-orbit" class="btn active">🎥 環繞鑑賞</button>
+        <button id="btn-cam-chase" class="btn">🎯 追尾視角</button>
+        <button id="btn-cam-cine" class="btn">🎬 電影運鏡</button>
+        <button id="btn-style-solid" class="btn active">🧊 8-BIT 立體</button>
+        <button id="btn-style-wire" class="btn">🕸 全息線框</button>
+        <button id="btn-grid" class="btn active">⊞ 空間網格</button>
+        <button id="btn-target" class="btn active">◎ 靶機：開</button>
+        <button id="btn-mute" class="btn">🔊 音效：開</button>
+        <a href="capital_turrets_3d.html" class="btn">🔫 星艦砲塔＆座艙</a>
+        <a href="index.html" class="btn gold">◀ 返回星艦大空戰</a>
+      </div>
+    </header>
+
+    <main>
+      <!-- Left: 9 Starships -->
+      <aside id="roster-panel">
+        <div class="panel-title">
+          <span>聯邦 9 款立體星艦</span>
+          <span id="ship-poly-count">3D</span>
+        </div>
+        <div id="ship-list"></div>
+      </aside>
+
+      <!-- Center: Interactive 3D Viewport -->
+      <section id="stage-wrap">
+        <canvas id="stage-canvas"></canvas>
+
+        <div class="stage-hud-top">
+          <div id="action-banner">
+            <div class="ab-label">CURRENT MANEUVER / 當前執行動作</div>
+            <div class="ab-name" id="ab-name">待機巡航懸浮（IDLE CRUISE）</div>
+            <div class="ab-sub" id="ab-sub">滑鼠拖曳可 360° 旋轉鑑賞 3D 艦體・右側點選或按快捷鍵觸發 14 種動作</div>
+          </div>
+          <div class="stage-tip">
+            拖曳滑鼠：360° 旋轉視角<br/>
+            滾輪縮放：拉近檢視細節<br/>
+            WASD：即時操控星艦姿態
+          </div>
+        </div>
+
+        <div class="stage-hud-bottom">
+          <div id="ship-card-hud">
+            <div id="hud-ship-title">01. 主力艦 · CAPITAL SHIP</div>
+            <div id="hud-ship-desc"></div>
+            <div id="hud-stats"></div>
+            <div id="hud-ship-sig"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: 14 Actions Control Deck -->
+      <aside id="action-panel">
+        <div class="panel-title">
+          <span>星艦動作控制台（共 14 種）</span>
+          <span>支援鍵盤快捷鍵</span>
+        </div>
+
+        <div id="action-scroll">
+          <div class="act-group-label">基礎機動與武器（核心動作）</div>
+          <div class="act-grid">
+            <button class="act-btn" data-act="move">
+              <div class="act-head"><span class="act-title">✈ 移動蛇行</span><span class="act-key">1</span></div>
+              <div class="act-desc">3D 壓坡傾斜、八字巡航與翼尖氣流</div>
+            </button>
+            <button class="act-btn" data-act="laser">
+              <div class="act-head"><span class="act-title">⚡ 脈衝射擊</span><span class="act-key">2</span></div>
+              <div class="act-desc">多砲口連射＋砲口閃光＋砲管後座</div>
+            </button>
+            <button class="act-btn" data-act="missile">
+              <div class="act-head"><span class="act-title">🚀 追蹤飛彈</span><span class="act-key">3</span></div>
+              <div class="act-desc">開啟彈艙齊射曲線追蹤飛彈轟炸</div>
+            </button>
+            <button class="act-btn" data-act="roll">
+              <div class="act-head"><span class="act-title">🌀 360° 翻滾</span><span class="act-key">4</span></div>
+              <div class="act-desc">高速桶滾閃避＋半透明 3D 殘影</div>
+            </button>
+            <button class="act-btn" data-act="boost" style="grid-column:1/-1;">
+              <div class="act-head"><span class="act-title">🔥 曲速後燃加速（BOOST）</span><span class="act-key">5 / Shift</span></div>
+              <div class="act-desc">多引擎電漿長尾焰暴漲＋雙翼後掠＋3D 音爆衝擊環＋高速星軌</div>
+            </button>
+          </div>
+
+          <div class="act-group-label">額外加碼・進階戰術動作</div>
+          <div class="act-grid">
+            <button class="act-btn" data-act="uturn">
+              <div class="act-head"><span class="act-title">↩ 180° 大迴轉</span><span class="act-key">6 / Z</span></div>
+              <div class="act-desc">高 G 垂直筋斗翻轉反咬＋金青旋渦</div>
+            </button>
+            <button class="act-btn" data-act="brake">
+              <div class="act-head"><span class="act-title">⏹ 逆噴急煞甩尾</span><span class="act-key">7 / X</span></div>
+              <div class="act-desc">艦艏逆向噴嘴點火急煞與橫向漂移</div>
+            </button>
+            <button class="act-btn" data-act="shield">
+              <div class="act-head"><span class="act-title">🛡 3D 能量護盾</span><span class="act-key">8 / G</span></div>
+              <div class="act-desc">展開旋轉六角多面體能量防護穹頂</div>
+            </button>
+            <button class="act-btn" data-act="beam">
+              <div class="act-head"><span class="act-title">☄ 集氣超載主砲</span><span class="act-key">9 / T</span></div>
+              <div class="act-desc">艦艏聚能光球蓄力→射出貫穿巨砲</div>
+            </button>
+            <button class="act-btn" data-act="cloak">
+              <div class="act-head"><span class="act-title">👻 光學匿蹤閃現</span><span class="act-key">0 / H</span></div>
+              <div class="act-desc">全息隱形切換＋相位殘影短距瞬移</div>
+            </button>
+            <button class="act-btn" data-act="emp">
+              <div class="act-head"><span class="act-title">📡 EMP 電磁震波</span><span class="act-key">U</span></div>
+              <div class="act-desc">3D 球形擴散電磁震波環癱瘓敵軍</div>
+            </button>
+            <button class="act-btn" data-act="flare">
+              <div class="act-head"><span class="act-title">✨ 熱焰干擾誘餌</span><span class="act-key">J</span></div>
+              <div class="act-desc">艦尾雙側拋射金色反制誘餌彈幕</div>
+            </button>
+            <button class="act-btn" data-act="damage">
+              <div class="act-head"><span class="act-title">💥 解體爆炸重組</span><span class="act-key">L</span></div>
+              <div class="act-desc">受擊強光→3D 裝甲爆裂解體再重組</div>
+            </button>
+            <button class="act-btn special" data-act="overdrive">
+              <div class="act-head"><span class="act-title">★ 艦種專屬特技展開（SIGNATURE OVERDRIVE）</span><span class="act-key">K</span></div>
+              <div class="act-desc" id="sig-btn-desc">觸發該星艦專屬變形／絕招動畫與全火力演出！</div>
+            </button>
+          </div>
+        </div>
+
+        <div class="demo-bar">
+          <button id="btn-demo" class="btn gold">▶ 全動作自動連播</button>
+          <button id="btn-reset" class="btn">↺ 待機重置</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="js/math.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/renderer3d.js"></script>
+  <script src="js/showcase3d.js"></script>
+</body>
+</html>

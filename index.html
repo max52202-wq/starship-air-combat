@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>星艦大空戰｜太陽系九大行星蟲族戰役</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-shell">
+    <!-- 雙層像素畫布：底層 WebGL 九大行星與太空，上層 3D 星艦／蟲族與座艙儀表 -->
+    <div id="viewport-wrap">
+      <canvas id="gl-canvas"></canvas>
+      <canvas id="fx-canvas"></canvas>
+
+      <!-- 高清晰科幻全息戰鬥 HUD 覆蓋層（敵人於上方、技能於底部、斜切裝甲全息風格） -->
+      <div id="battle-hud" class="hidden">
+        <!-- 四角全息護目鏡裝飾框線 -->
+        <div class="visor-corner tl"></div>
+        <div class="visor-corner tr"></div>
+        <div class="visor-corner bl"></div>
+        <div class="visor-corner br"></div>
+
+        <!-- 左上：艦體核心全息儀表 -->
+        <div id="hud-player" class="hud-panel sci-panel">
+          <div class="hud-panel-head">
+            <span class="hud-dot"></span>
+            <span>艦體核心 // CORE</span>
+            <span class="hud-tag cyan" id="hud-ship-name">微型戰機</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-lbl cyan">護盾</span>
+            <div class="hud-bar-track seg"><div id="hud-shield-fill" class="hud-bar-fill shield"></div></div>
+            <span id="hud-shield-val" class="hud-num">100</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-lbl green">裝甲</span>
+            <div class="hud-bar-track seg"><div id="hud-hp-fill" class="hud-bar-fill hp"></div></div>
+            <span id="hud-hp-val" class="hud-num">100</span>
+          </div>
+          <div class="hud-subrow">
+            <span class="hud-tag warn" id="hud-missiles">飛彈 6/6</span>
+            <span class="hud-mini-status" id="hud-lock-state">火控：連線中</span>
+          </div>
+        </div>
+
+        <!-- 正上方：蟲族生體鎖定掃描儀（顯示敵人於上方） -->
+        <div id="hud-target" class="hud-panel sci-panel target-panel hidden">
+          <div class="hud-target-icon-wrap">
+            <div id="hud-target-sprite" class="hud-target-sprite"></div>
+            <div class="bio-scanline"></div>
+          </div>
+          <div class="hud-target-info">
+            <div class="hud-target-top">
+              <span id="hud-target-name" class="hud-target-name">飛螳</span>
+              <span id="hud-target-lock" class="hud-lock-pill">鎖定完成</span>
+              <span id="hud-target-dist" class="hud-target-dist">850m</span>
+            </div>
+            <div class="hud-bar-track seg target-track">
+              <div id="hud-target-hp-fill" class="hud-bar-fill enemy"></div>
+            </div>
+            <div class="hud-target-bot">
+              <span id="hud-target-act" class="hud-target-act">拍翼巡航</span>
+              <span id="hud-target-pct" class="hud-num">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右上：軌道航電遙測儀表 -->
+        <div id="hud-flight" class="hud-panel sci-panel flight-panel">
+          <div class="hud-panel-head">
+            <span class="hud-dot amber"></span>
+            <span>航電遙測 // NAV</span>
+            <span class="hud-diff-tag" id="hud-diff-badge">標準</span>
+          </div>
+          <div class="hud-telemetry"><span>速度</span><strong id="hud-speed">744</strong></div>
+          <div class="hud-thrust-track"><div id="hud-thrust-fill" class="hud-thrust-fill"></div></div>
+          <div class="hud-telemetry"><span>高度</span><strong id="hud-alt">480m</strong></div>
+          <div class="hud-telemetry"><span>空域</span><strong id="hud-zone" class="gold">地球・地表</strong></div>
+          <div id="hud-boost-tag" class="hud-boost-tag hidden">⚡ 曲速引擎超載中</div>
+        </div>
+
+        <!-- 正下方：8 項科幻戰術技能甲板（移至最下方，附動態冷卻條） -->
+        <div id="hud-skills">
+          <button class="skill-chip ready" data-skill="roll" id="sk-roll"><span class="sk-key"><i class="sk-kbd">B</i>桶滾</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="uturn" id="sk-uturn"><span class="sk-key"><i class="sk-kbd">Z</i>迴轉</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="shield" id="sk-shield"><span class="sk-key"><i class="sk-kbd">G</i>護盾</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="beam" id="sk-beam"><span class="sk-key"><i class="sk-kbd">T</i>主砲</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="cloak" id="sk-cloak"><span class="sk-key"><i class="sk-kbd">H</i>匿蹤</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="emp" id="sk-emp"><span class="sk-key"><i class="sk-kbd">U</i>EMP</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="flares" id="sk-flares"><span class="sk-key"><i class="sk-kbd">J</i>誘餌</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+          <button class="skill-chip ready" data-skill="overdrive" id="sk-overdrive"><span class="sk-key"><i class="sk-kbd">K</i>特技</span><span class="sk-st">就緒</span><span class="sk-prog"></span></button>
+        </div>
+      </div>
+
+      <!-- 頂部艦隊無線電通訊列 -->
+      <div id="comms-bar" class="hidden">
+        <div class="comms-badge" id="comms-sender">艦隊總部</div>
+        <div class="comms-text" id="comms-text">星艦引擎預熱完成，準備出擊！</div>
+      </div>
+
+      <!-- 敵軍蟲族巢母血量條 -->
+      <div id="boss-bar" class="hidden">
+        <div class="boss-label">
+          <span id="boss-name">先鋒蟲族巢母・吞噬者</span>
+          <span id="boss-pct">100%</span>
+        </div>
+        <div class="boss-track">
+          <div class="boss-fill" id="boss-fill"></div>
+        </div>
+      </div>
+
+      <!-- 開始畫面 -->
+      <div id="title-overlay" class="overlay">
+        <div class="title-card">
+          <div class="pixel-tag">8-BIT 太陽系九大行星・蟲族入侵戰役</div>
+          <h1>星艦<span>大空戰</span></h1>
+          <p class="subtitle">蟲族軍團全面入侵太陽系！從初始戰場「地球」起飛，守衛地表、突破大氣層，與聯邦太空艦隊解放九大行星！</p>
+
+          <div class="stage-preview">
+            <div class="stage-pill"><span>初始戰場</span> 地球大氣層保衛戰</div>
+            <div class="stage-pill"><span>星系戰役</span> 太陽系九大行星任務</div>
+            <div class="stage-pill"><span>宿敵軍團</span> 蟲族飛蟲＆巨型巢母</div>
+          </div>
+
+          <div class="controls-grid">
+            <div><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> 3D 俯仰、盤旋與滾轉</div>
+            <div><kbd>空白鍵</kbd> / <kbd>F</kbd> 脈衝雷射砲／追蹤飛彈</div>
+            <div><kbd>SHIFT</kbd> / <kbd>X</kbd> 曲速加速／逆噴急煞</div>
+            <div><kbd>B</kbd> / <kbd>Z</kbd> 360° 桶滾翻滾／180° 大迴轉</div>
+            <div><kbd>G</kbd> / <kbd>T</kbd> 3D 護盾穹頂／集氣超載主砲</div>
+            <div><kbd>H</kbd> / <kbd>U</kbd> 光學匿蹤閃現／EMP 震波</div>
+            <div><kbd>J</kbd> / <kbd>K</kbd> 熱焰誘餌彈／艦種專屬特技</div>
+            <div><kbd>R</kbd> / <kbd>C</kbd> 自動鎖定／切換座艙視角</div>
+          </div>
+
+          <div class="diff-selector" id="title-diff-selector">
+            <span class="diff-title">作戰難度：</span>
+            <button class="diff-btn" data-diff="easy">休閒</button>
+            <button class="diff-btn active" data-diff="normal">標準</button>
+            <button class="diff-btn" data-diff="hard">困難</button>
+            <button class="diff-btn" data-diff="hell">噩夢</button>
+          </div>
+          <div class="diff-desc" id="title-diff-desc">平衡的星艦空戰節奏與蟲族攻勢。</div>
+
+          <div class="title-actions">
+            <button id="btn-start" class="pixel-btn primary">▶ 任務 01：地球保衛戰出擊</button>
+            <a href="starships_3d.html" class="pixel-btn primary" style="text-decoration:none;background:#1a6e9e;border-color:#72f8ff;">🧊 3D 立體星艦動作展示廳</a>
+            <a href="turrets_3d.html" class="pixel-btn primary" style="text-decoration:none;background:#6b4b12;border-color:#ffd866;">🎯 地面防空砲塔 3D＆座艙廳（10 款）</a>
+            <button id="btn-open-hangar-title" class="pixel-btn secondary">🚀 星艦機庫（9 款星艦）</button>
+            <button id="btn-open-map-title" class="pixel-btn secondary">✦ 太陽系九大行星星圖</button>
+            <button id="btn-open-bestiary-title" class="pixel-btn secondary">☣ 蟲族空戰圖鑑</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 聯邦星艦機庫（9 款自製 8-BIT 星艦選擇視窗） -->
+      <div id="hangar-overlay" class="overlay hidden">
+        <div class="mission-modal hangar-modal">
+          <div class="mission-header">
+            <div>
+              <div class="pixel-tag">太陽系聯邦船塢 · 9 款 8-BIT 太空艦隊戰艦</div>
+              <h2>聯邦星艦機庫（選擇駕駛座駕）</h2>
+            </div>
+            <div class="mission-header-right">
+              <div class="liberation-pill" id="current-ship-pill">目前座駕：微型戰機</div>
+              <a href="starships_3d.html" class="dock-btn accent" style="text-decoration:none;">🧊 3D 動作展示廳</a>
+              <button id="btn-close-hangar" class="dock-btn">✕ 關閉</button>
+            </div>
+          </div>
+          <p class="mission-intro">
+            點擊任一款星艦立即切換為你的出擊座駕！其餘主力艦、戰列艦、巡洋艦、航空母艦與科學艦也會在太空軌道戰中以友軍艦隊身份並肩作戰！
+          </p>
+          <div id="hangar-grid" class="hangar-grid"></div>
+        </div>
+      </div>
+
+      <!-- 蟲族生物階層圖鑑視窗 -->
+      <div id="bestiary-overlay" class="overlay hidden">
+        <div class="mission-modal bestiary-modal">
+          <div class="mission-header">
+            <div>
+              <div class="pixel-tag">聯邦情報局檔案 · 3D 8-BIT ZERG AERIAL SWARM</div>
+              <h2>蟲族 3D 立體空戰生物圖鑑（全 10 階 × 10 種動作）</h2>
+            </div>
+            <div class="mission-header-right">
+              <div class="liberation-pill">3D 立體 8-BIT・10 動作實機動畫</div>
+              <button id="btn-close-bestiary" class="dock-btn">✕ 關閉</button>
+            </div>
+          </div>
+          <div id="bestiary-actions" class="bestiary-actions"></div>
+          <div class="bestiary-scroll">
+            <div id="bestiary-grid" class="bestiary-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 太陽系九大行星任務星圖視窗 -->
+      <div id="mission-overlay" class="overlay hidden">
+        <div class="mission-modal">
+          <div class="mission-header">
+            <div>
+              <div class="pixel-tag">太陽系防禦指揮中心 · 蟲族入侵戰況</div>
+              <h2>九大行星戰役星圖</h2>
+            </div>
+            <div class="mission-header-right">
+              <div class="liberation-pill" id="liberation-progress">太陽系解放：0 / 9 行星</div>
+              <button id="btn-close-map" class="dock-btn">✕ 關閉</button>
+            </div>
+          </div>
+          <p class="mission-intro">
+            【戰情簡報】跨星系蟲族自冥王星蟲洞湧入太陽系，首要目標直指人類母星「地球」。請優先完成地球防禦任務，再逐一光復九大行星！
+            <span class="future-note">（已預留擴充架構：後續將加入「地表防空射擊戰艦」、「大型星艦砲塔射擊」與自訂戰艦／蟲族圖檔）</span>
+          </p>
+          <div id="mission-grid" class="mission-grid"></div>
+        </div>
+      </div>
+
+      <!-- 結算畫面 -->
+      <div id="end-overlay" class="overlay hidden">
+        <div class="title-card">
+          <div class="pixel-tag" id="end-tag">作戰任務報告</div>
+          <h2 id="end-title">行星防線光復！</h2>
+          <p id="end-desc" class="subtitle"></p>
+          <div class="stats-row">
+            <div class="stat-box"><span>殲滅蟲族單位</span><strong id="stat-kills">0</strong></div>
+            <div class="stat-box"><span>擊沉大型巢艦</span><strong id="stat-caps">0</strong></div>
+            <div class="stat-box"><span>作戰總積分</span><strong id="stat-score">0</strong></div>
+          </div>
+          <div class="title-actions">
+            <button id="btn-next-mission" class="pixel-btn primary hidden">▶ 前往下一行星任務</button>
+            <button id="btn-restart" class="pixel-btn secondary">↻ 重打本行星任務</button>
+            <button id="btn-open-map-end" class="pixel-btn secondary">✦ 太陽系星圖</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部復古控制台 -->
+    <div id="control-dock">
+      <div class="dock-group">
+        <button id="btn-missions" class="dock-btn accent" title="開啟太陽系九大行星任務星圖">太陽系任務</button>
+        <button id="btn-hangar" class="dock-btn accent" title="開啟 9 款聯邦星艦機庫">星艦機庫</button>
+        <a href="starships_3d.html" class="dock-btn accent" style="text-decoration:none;" title="開啟 3D 立體星艦 14 種動作展示廳">3D展示廳</a>
+        <a href="turrets_3d.html" class="dock-btn warn" style="text-decoration:none;" title="開啟 10 款地面防空砲塔 3D、動作圖與坐進座艙射擊模擬">防空砲塔廳</a>
+        <button id="btn-3d-mode" class="dock-btn active" title="切換 3D 立體模型 / 2D 像素圖示">3D立體：開</button>
+        <button id="btn-bestiary" class="dock-btn" title="檢視全 10 階空戰蟲族圖鑑">蟲族圖鑑</button>
+        <button id="btn-cam" class="dock-btn" title="切換視角 (C)">視角：第三人稱</button>
+        <button id="btn-autolock" class="dock-btn active" title="自動鎖定開關 (R)">自動鎖定：開</button>
+        <button id="btn-next-target" class="dock-btn" title="切換鎖定目標 (Tab)">切換目標</button>
+        <button id="btn-roll" class="dock-btn accent" title="360° 桶滾閃避翻滾 (B)">桶滾(B)</button>
+        <button id="btn-uturn" class="dock-btn warn" title="180° 戰術大迴轉 (Z)">大迴轉(Z)</button>
+        <button id="btn-shield" class="dock-btn" title="展開 3D 能量護盾穹頂 (G)">護盾(G)</button>
+        <button id="btn-beam" class="dock-btn warn" title="集氣超載貫穿主砲 (T)">主砲(T)</button>
+        <button id="btn-cloak" class="dock-btn" title="光學匿蹤與相位閃現 (H)">匿蹤(H)</button>
+        <button id="btn-emp" class="dock-btn" title="釋放 EMP 電磁震波 (U)">EMP(U)</button>
+        <button id="btn-flares" class="dock-btn" title="施放熱焰誘餌彈 (J)">誘餌(J)</button>
+        <button id="btn-overdrive" class="dock-btn accent" title="艦種專屬特技展開 (K)">特技(K)</button>
+        <button id="btn-boost" class="dock-btn accent" title="按住加速推進 (Shift)">加速</button>
+      </div>
+      <div class="dock-group">
+        <button id="btn-zone-earth" class="dock-btn" title="返回本行星地表空戰區">地表空戰</button>
+        <button id="btn-zone-space" class="dock-btn" title="直接飛升至本行星軌道艦隊戰區">躍遷軌道</button>
+        <span class="dock-readout" id="dock-mission">地球 · 階段一</span>
+        <span class="dock-readout" id="dock-score">積分 00000</span>
+        <button id="btn-diff" class="dock-btn accent" title="點擊切換遊戲難度（休閒／標準／困難／噩夢）">難度：標準</button>
+        <button id="btn-fire-laser" class="dock-btn danger mobile-only">雷射砲</button>
+        <button id="btn-fire-missile" class="dock-btn warn mobile-only">追蹤飛彈</button>
+        <button id="btn-mute" class="dock-btn" title="音效開關 (M)">音效：開</button>
+      </div>
+    </div>
+
+    <!-- 觸控虛擬搖桿（行動裝置自動顯示） -->
+    <div id="touch-pad" class="hidden">
+      <div id="touch-knob"></div>
+    </div>
+  </div>
+
+  <!-- 模組腳本 -->
+  <script src="js/math.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/planet_gl.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/renderer3d.js"></script>
+  <script src="js/cockpit.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

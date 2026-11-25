@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大型星艦砲塔 8-BIT 3D 動作＆座艙操控展示廳｜10 款聯邦艦載砲塔</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #040812; color: #e4f4ff;
+      font-family: "Courier New", "Consolas", "Noto Sans TC", "Microsoft JhengHei", monospace;
+    }
+    #app { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 8px 14px;
+      background: #081224; border-bottom: 2px solid #2b7bb0;
+      flex-wrap: wrap; z-index: 10;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .hdr-tag {
+      font-size: 10px; letter-spacing: 1.5px; color: #ffe078;
+      border: 1px solid #d4a135; background: rgba(130, 92, 20, 0.35);
+      padding: 2px 7px;
+    }
+    header h1 { font-size: 16px; color: #fff; letter-spacing: 1.5px; text-shadow: 2px 2px 0 #104578; }
+    header h1 span { color: #5ef2ff; }
+    .hdr-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .btn {
+      background: #0f2440; border: 1px solid #3c86bd; color: #d8f2ff;
+      padding: 5px 10px; font-size: 11px; font-family: inherit;
+      cursor: pointer; transition: background 0.12s, border-color 0.12s;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn:hover { background: #193b66; border-color: #6de8ff; color: #fff; }
+    .btn.active { background: #166ea8; border-color: #7df7ff; color: #fff; box-shadow: 0 0 8px rgba(94, 242, 255, 0.35); }
+    .btn.gold { background: #4a3510; border-color: #f4be42; color: #ffe79a; }
+    .btn.gold:hover, .btn.gold.active { background: #704f14; border-color: #ffe278; color: #fff; }
+
+    main {
+      flex: 1; display: grid; grid-template-columns: 244px 1fr 296px;
+      min-height: 0; overflow: hidden;
+    }
+    @media (max-width: 1024px) { main { grid-template-columns: 200px 1fr 248px; } }
+    @media (max-width: 780px) { main { grid-template-columns: 1fr; grid-template-rows: 112px 1fr 220px; } }
+
+    #roster-panel, #action-panel {
+      background: #07101f; display: flex; flex-direction: column; overflow: hidden;
+    }
+    #roster-panel { border-right: 2px solid #1b3d63; }
+    #action-panel { border-left: 2px solid #1b3d63; }
+
+    .panel-title {
+      padding: 8px 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      color: #7ee8ff; background: #0a1930; border-bottom: 1px solid #1e4670;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    #turret-list {
+      flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 5px;
+    }
+    @media (max-width: 780px) { #turret-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; } }
+
+    .turret-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px;
+      background: #0c1b33; border: 1px solid #1f446b; cursor: pointer;
+      transition: all 0.12s; flex-shrink: 0;
+    }
+    .turret-item:hover { background: #132a4d; border-color: #4eb8eb; }
+    .turret-item.selected {
+      background: #14375e; border-color: #64f4ff;
+      box-shadow: inset 3px 0 0 #64f4ff, 0 0 10px rgba(94, 242, 255, 0.22);
+    }
+    .turret-item img {
+      width: 44px; height: 44px; image-rendering: pixelated;
+      border: 1px solid #2b5a8a; background: #070d1c; flex-shrink: 0;
+    }
+    .ti-info { min-width: 0; }
+    .ti-no { font-size: 9px; color: #ffd970; letter-spacing: 1px; }
+    .ti-name { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
+    .ti-ship { font-size: 10px; color: #8fd2f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    #stage-wrap {
+      position: relative; background: #03060f; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    #stage-canvas {
+      width: 100%; height: 100%; display: block;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      cursor: grab;
+    }
+    #stage-canvas.cockpit-mode { cursor: crosshair; }
+    #stage-canvas:active { cursor: grabbing; }
+
+    /* Asset Gallery Overlay */
+    #gallery-view {
+      position: absolute; inset: 0; background: #050a16;
+      overflow-y: auto; padding: 16px; display: none; flex-direction: column; gap: 16px; z-index: 6;
+    }
+    #gallery-view.open { display: flex; }
+    .gal-card {
+      background: #091428; border: 1px solid #2c6ea0; padding: 12px;
+    }
+    .gal-card h3 { font-size: 13px; color: #6cf4ff; margin-bottom: 8px; letter-spacing: 1px; }
+    .gal-card img {
+      width: 100%; height: auto; display: block; image-rendering: pixelated;
+      border: 1px solid #1b4368; background: #040812;
+    }
+
+    .stage-hud-top {
+      position: absolute; top: 10px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      pointer-events: none; gap: 8px;
+    }
+    #action-banner {
+      background: rgba(6, 16, 32, 0.86); border: 2px solid #48e0ff;
+      padding: 6px 12px; box-shadow: 0 0 14px rgba(72, 224, 255, 0.25);
+    }
+    #action-banner .ab-label { font-size: 10px; color: #8cd8f8; letter-spacing: 1.5px; }
+    #action-banner .ab-name { font-size: 15px; font-weight: 700; color: #fff; margin-top: 1px; }
+    #action-banner .ab-sub { font-size: 11px; color: #ffd970; margin-top: 2px; }
+    .stage-tip {
+      background: rgba(6, 14, 28, 0.8); border: 1px solid #275a8a;
+      padding: 5px 9px; font-size: 10px; color: #a7d4f0; text-align: right; line-height: 1.45;
+    }
+
+    .stage-hud-bottom {
+      position: absolute; bottom: 10px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 10px; pointer-events: none;
+    }
+    #turret-card-hud {
+      background: rgba(6, 15, 30, 0.88); border: 1px solid #2e78b0;
+      padding: 8px 12px; max-width: 520px;
+    }
+    #hud-title { font-size: 14px; font-weight: 700; color: #64f4ff; }
+    #hud-desc { font-size: 11px; color: #c7e4f8; margin-top: 3px; line-height: 1.4; }
+    #hud-ship { font-size: 11px; color: #ffe078; margin-top: 4px; border-top: 1px dashed #255078; padding-top: 4px; }
+
+    #action-scroll {
+      flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .act-group-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #ffd166;
+      padding: 2px 4px; border-left: 3px solid #ffd166;
+    }
+    .act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .act-btn {
+      background: #0d1f3a; border: 1px solid #2d6699; color: #def4ff;
+      padding: 7px; text-align: left; cursor: pointer;
+      font-family: inherit; transition: all 0.12s; display: flex; flex-direction: column; gap: 2px;
+    }
+    .act-btn:hover { background: #163661; border-color: #66ebff; color: #fff; }
+    .act-btn.active { background: #14588a; border-color: #74f8ff; box-shadow: 0 0 10px rgba(94, 242, 255, 0.4); }
+    .act-head { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+    .act-title { font-size: 11px; font-weight: 700; }
+    .act-key { font-size: 9px; padding: 1px 4px; background: #163356; border: 1px solid #489bd1; color: #9be8ff; }
+    .act-desc { font-size: 9.5px; color: #8cb9d8; line-height: 1.25; }
+
+    .preview-box {
+      background: #081428; border: 1px solid #23507a; padding: 6px;
+    }
+    .preview-box .pv-lbl { font-size: 10px; color: #8ad8ff; margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .preview-box img {
+      width: 100%; height: auto; display: block; image-rendering: pixelated;
+      border: 1px solid #1b3f66; background: #040812; cursor: pointer;
+    }
+
+    .demo-bar {
+      padding: 8px; border-top: 1px solid #1e4670; background: #0a182e; display: flex; gap: 6px;
+    }
+    .demo-bar .btn { flex: 1; justify-content: center; padding: 7px 6px; font-weight: 700; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #050c18; }
+    ::-webkit-scrollbar-thumb { background: #235482; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="hdr-left">
+        <span class="hdr-tag">CAPITAL SHIP GUNNERY DECK</span>
+        <h1>大型星艦砲塔 <span>8-BIT 3D 動作＆座艙廳</span></h1>
+      </div>
+      <div class="hdr-controls">
+        <button id="btn-mode-3d" class="btn active">🧊 3D 甲板環繞</button>
+        <button id="btn-mode-cockpit" class="btn gold">🎯 坐進砲塔座艙操控</button>
+        <button id="btn-mode-gallery" class="btn">🖼 8-BIT 總覽圖鑑</button>
+        <button id="btn-wire" class="btn">🕸 線框模式</button>
+        <a href="starships_3d.html" class="btn">🚀 星艦展示廳</a>
+        <a href="index.html" class="btn">◀ 返回遊戲</a>
+      </div>
+    </header>
+
+    <main>
+      <aside id="roster-panel">
+        <div class="panel-title">
+          <span>大型星艦 10 款艦載砲塔</span>
+          <span>8-BIT 3D</span>
+        </div>
+        <div id="turret-list"></div>
+      </aside>
+
+      <section id="stage-wrap">
+        <canvas id="stage-canvas"></canvas>
+
+        <div id="gallery-view">
+          <div class="gal-card">
+            <h3>1. 大型星艦甲板 3 座砲塔聯合作戰 — 8-BIT 3D 四格動作圖</h3>
+            <img src="assets/capital_turrets_8bit/actions/capital_ship_deck_battle_actions.png" alt="Capital Starship Deck Battle Actions" />
+          </div>
+          <div class="gal-card">
+            <h3>2. 坐在大型星艦砲塔座艙內操作 — 4 階段即時戰鬥動作圖</h3>
+            <img src="assets/capital_turrets_8bit/cockpits/capital_cockpit_actions_showcase.png" alt="Seated Cockpit Combat Actions" />
+          </div>
+          <div class="gal-card">
+            <h3>3. 10 款大型星艦砲塔 — 8-BIT 3D 模型總覽圖</h3>
+            <img src="assets/capital_turrets_8bit/icons/capital_turrets_3d_8bit_overview.png" alt="10 Capital Starship Turrets 3D Overview" />
+          </div>
+          <div class="gal-card">
+            <h3>4. 10 款砲塔座艙第一人稱視角總覽（含星艦甲板與雙手操控桿）</h3>
+            <img src="assets/capital_turrets_8bit/cockpits/capital_cockpits_overview.png" alt="10 Seated Starship Turret Cockpits Overview" />
+          </div>
+          <div class="gal-card">
+            <h3>5. 10 款星艦砲塔 × 8 種完整 3D 動作精靈表總覽</h3>
+            <img src="assets/capital_turrets_8bit/actions/capital_turrets_actions_showcase.png" alt="10x8 Starship Turrets Action Sheet" />
+          </div>
+        </div>
+
+        <div class="stage-hud-top" id="stage-hud-top">
+          <div id="action-banner">
+            <div class="ab-label" id="ab-label">STARSHIP DECK TURRET / 當前執行動作</div>
+            <div class="ab-name" id="ab-name">甲板待機巡航（DECK STANDBY）</div>
+            <div class="ab-sub" id="ab-sub">滑鼠拖曳可 360° 鑑賞星艦甲板 3D 砲塔・點上方「坐進砲塔座艙操控」體驗第一人稱開火！</div>
+          </div>
+          <div class="stage-tip" id="stage-tip">
+            拖曳滑鼠：360° 旋轉鑑賞<br/>
+            滾輪縮放：拉近檢視裝甲<br/>
+            數字鍵 1-8：切換 8 種動作
+          </div>
+        </div>
+
+        <div class="stage-hud-bottom" id="stage-hud-bottom">
+          <div id="turret-card-hud">
+            <div id="hud-title">01. 四聯裝球型雷射砲塔 · QUAD LASER BALL TURRET</div>
+            <div id="hud-desc"></div>
+            <div id="hud-ship"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside id="action-panel">
+        <div class="panel-title">
+          <span>砲塔動作與座艙控制台</span>
+          <span>1-8 / Space</span>
+        </div>
+
+        <div id="action-scroll">
+          <div class="act-group-label">砲塔 8 種 3D 戰鬥動作</div>
+          <div class="act-grid" id="act-grid"></div>
+
+          <div class="act-group-label">當前砲塔・座艙內第一人稱圖（點擊坐進去）</div>
+          <div class="preview-box">
+            <div class="pv-lbl"><span>SEATED GUNNER COCKPIT</span><span>640×400</span></div>
+            <img id="pv-cockpit" src="" alt="Cockpit Preview" title="點擊切換為可互動坐進座艙模式！" />
+          </div>
+
+          <div class="act-group-label">當前砲塔・8 格 3D 動作精靈條</div>
+          <div class="preview-box">
+            <div class="pv-lbl"><span>8-FRAME ACTION STRIP</span><span>1920×240</span></div>
+            <img id="pv-strip" src="" alt="Action Strip Preview" />
+          </div>
+        </div>
+
+        <div class="demo-bar">
+          <button id="btn-demo" class="btn gold">▶ 全動作自動連播</button>
+          <button id="btn-fire-now" class="btn">🔥 立即開火</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="js/capital_turret_models.js"></script>
+  <script>
+    (function () {
+      const CT = window.CapitalTurretModels;
+      const turrets = CT.TURRET_LIST;
+      const actions = CT.TURRET_ACTIONS;
+
+      const canvas = document.getElementById("stage-canvas");
+      const ctx = canvas.getContext("2d");
+      const galleryEl = document.getElementById("gallery-view");
+
+      // Low-res 8-bit internal render target for crisp nearest-neighbor pixel look!
+      const RW = 320, RH = 200;
+      const off = document.createElement("canvas");
+      off.width = RW; off.height = RH;
+      const octx = off.getContext("2d");
+      octx.imageSmoothingEnabled = false;
+
+      let selectedIdx = 0;
+      let currentAct = "standby";
+      let viewMode = "3d"; // "3d" | "cockpit" | "gallery"
+      let wireframe = false;
+      let autoDemo = false;
+      let demoTimer = 0;
+      let simTime = 0;
+
+      // 3D Orbit Camera
+      let camYaw = -0.72, camPitch = 0.46, camDist = 11.6;
+      let dragging = false, lastX = 0, lastY = 0;
+
+      // Seated Cockpit Interactive State
+      let aimNormX = 0, aimNormY = 0; // -1..1
+      let cockpitFiring = false;
+      let cockpitRecoil = 0;
+      let cockpitHeat = 0;
+      const cockpitTargets = [
+        { x: -0.38, y: -0.18, vx: 0.22, hp: 100, hitFlash: 0, big: false },
+        { x:  0.12, y: -0.08, vx: -0.15, hp: 140, hitFlash: 0, big: true },
+        { x:  0.46, y: -0.24, vx: -0.24, hp: 100, hitFlash: 0, big: false },
+      ];
+      const cockpitSparks = [];
+
+      // Precomputed starfield
+      const stars = Array.from({ length: 75 }, (_, i) => ({
+        x: ((i * 73) % RW),
+        y: ((i * 47) % RH),
+        sp: 4 + (i % 4) * 5,
+        c: i % 3 === 0 ? "#82ecff" : (i % 5 === 0 ? "#ffe08a" : "#dbeeff"),
+      }));
+
+      // Build Roster List
+      const listEl = document.getElementById("turret-list");
+      turrets.forEach((t, idx) => {
+        const el = document.createElement("div");
+        el.className = "turret-item" + (idx === 0 ? " selected" : "");
+        el.innerHTML = `
+          <img src="assets/capital_turrets_8bit/icons/${t.no}_${t.id}.png" alt="${t.name}" />
+          <div class="ti-info">
+            <div class="ti-no">NO.${t.no} · ${t.shipClass}</div>
+            <div class="ti-name">${t.name}</div>
+            <div class="ti-ship">${t.en}</div>
+          </div>
+        `;
+        el.onclick = () => selectTurret(idx);
+        listEl.appendChild(el);
+      });
+
+      // Build Action Buttons
+      const actGrid = document.getElementById("act-grid");
+      actions.forEach((a, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "act-btn" + (idx === 0 ? " active" : "");
+        btn.dataset.act = a.key;
+        btn.innerHTML = `
+          <div class="act-head"><span class="act-title">${a.zh}</span><span class="act-key">${idx + 1}</span></div>
+          <div class="act-desc">${a.en}</div>
+        `;
+        btn.onclick = () => setAction(a.key);
+        actGrid.appendChild(btn);
+      });
+
+      function selectTurret(idx) {
+        selectedIdx = idx;
+        const t = turrets[idx];
+        document.querySelectorAll(".turret-item").forEach((el, i) => el.classList.toggle("selected", i === idx));
+        document.getElementById("hud-title").textContent = `${t.no}. ${t.name} · ${t.en}`;
+        document.getElementById("hud-desc").textContent = t.role;
+        document.getElementById("hud-ship").textContent = `艦載配置：${t.shipClass} ｜ 武器類型：${t.weaponStyle.toUpperCase()}`;
+        document.getElementById("pv-cockpit").src = `assets/capital_turrets_8bit/cockpits/${t.no}_${t.id}_cockpit.png`;
+        document.getElementById("pv-strip").src = `assets/capital_turrets_8bit/actions/${t.no}_${t.id}_actions.png`;
+      }
+
+      function setAction(key) {
+        currentAct = key;
+        const a = actions.find((x) => x.key === key) || actions[0];
+        document.querySelectorAll(".act-btn").forEach((b) => b.classList.toggle("active", b.dataset.act === key));
+        if (viewMode === "3d") {
+          document.getElementById("ab-name").textContent = `${a.zh}（${a.en}）`;
+          document.getElementById("ab-sub").textContent = a.desc;
+        }
+      }
+
+      function setViewMode(mode) {
+        viewMode = mode;
+        galleryEl.classList.toggle("open", mode === "gallery");
+        document.getElementById("stage-hud-top").style.display = mode === "gallery" ? "none" : "flex";
+        document.getElementById("stage-hud-bottom").style.display = mode === "3d" ? "flex" : "none";
+        canvas.classList.toggle("cockpit-mode", mode === "cockpit");
+        document.getElementById("btn-mode-3d").classList.toggle("active", mode === "3d");
+        document.getElementById("btn-mode-cockpit").classList.toggle("active", mode === "cockpit");
+        document.getElementById("btn-mode-gallery").classList.toggle("active", mode === "gallery");
+
+        if (mode === "cockpit") {
+          const t = turrets[selectedIdx];
+          document.getElementById("ab-label").textContent = "SEATED INSIDE TURRET COCKPIT / 第一人稱砲塔座艙";
+          document.getElementById("ab-name").textContent = `坐進「${t.name}」座艙操控中`;
+          document.getElementById("ab-sub").textContent = "移動滑鼠瞄準星艦外太空蟲群・按住左鍵或空白鍵開火齊射！";
+          document.getElementById("stage-tip").innerHTML = "移動滑鼠：雙手操縱準星<br/>左鍵 / Space：全砲口開火<br/>左側清單：即時切換 10 款座艙";
+        } else if (mode === "3d") {
+          document.getElementById("ab-label").textContent = "STARSHIP DECK TURRET / 當前執行動作";
+          setAction(currentAct);
+          document.getElementById("stage-tip").innerHTML = "拖曳滑鼠：360° 旋轉鑑賞<br/>滾輪縮放：拉近檢視裝甲<br/>數字鍵 1-8：切換 8 種動作";
+        }
+      }
+
+      document.getElementById("btn-mode-3d").onclick = () => setViewMode("3d");
+      document.getElementById("btn-mode-cockpit").onclick = () => setViewMode("cockpit");
+      document.getElementById("btn-mode-gallery").onclick = () => setViewMode("gallery");
+      document.getElementById("pv-cockpit").onclick = () => setViewMode("cockpit");
+      document.getElementById("btn-wire").onclick = (e) => {
+        wireframe = !wireframe;
+        e.currentTarget.classList.toggle("active", wireframe);
+      };
+      document.getElementById("btn-demo").onclick = (e) => {
+        autoDemo = !autoDemo;
+        demoTimer = 0;
+        e.currentTarget.classList.toggle("active", autoDemo);
+      };
+      document.getElementById("btn-fire-now").onclick = () => {
+        if (viewMode === "cockpit") {
+          cockpitFiring = true;
+          setTimeout(() => { cockpitFiring = false; }, 450);
+        } else {
+          setAction("fire");
+        }
+      };
+
+      // Mouse / Keyboard controls
+      canvas.addEventListener("mousedown", (e) => {
+        if (viewMode === "cockpit") {
+          cockpitFiring = true;
+        } else {
+          dragging = true; lastX = e.clientX; lastY = e.clientY;
+        }
+      });
+      window.addEventListener("mouseup", () => { dragging = false; cockpitFiring = false; });
+      window.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        if (viewMode === "cockpit") {
+          aimNormX = Math.max(-1, Math.min(1, ((e.clientX - rect.left) / rect.width) * 2 - 1));
+          aimNormY = Math.max(-1, Math.min(1, ((e.clientY - rect.top) / rect.height) * 2 - 1));
+        } else if (dragging) {
+          camYaw += (e.clientX - lastX) * 0.01;
+          camPitch = Math.max(0.12, Math.min(1.22, camPitch + (e.clientY - lastY) * 0.008));
+          lastX = e.clientX; lastY = e.clientY;
+        }
+      });
+      canvas.addEventListener("wheel", (e) => {
+        if (viewMode !== "3d") return;
+        e.preventDefault();
+        camDist = Math.max(6.8, Math.min(18, camDist + e.deltaY * 0.008));
+      }, { passive: false });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          if (viewMode === "cockpit") cockpitFiring = true;
+          else setAction("fire");
+        }
+        const n = parseInt(e.key, 10);
+        if (n >= 1 && n <= 8) setAction(actions[n - 1].key);
+      });
+      window.addEventListener("keyup", (e) => {
+        if (e.code === "Space") cockpitFiring = false;
+      });
+
+      // 3D Projection helpers
+      function norm3(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+      function cross3(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+      function dot3(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+
+      function makeCam() {
+        const cx = Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+        const cy = Math.sin(camPitch) * camDist + 1.8;
+        const cz = Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+        const pos = [cx, cy, cz];
+        const target = [0, 1.9, 0.2];
+        const fwd = norm3([target[0] - pos[0], target[1] - pos[1], target[2] - pos[2]]);
+        const right = norm3(cross3(fwd, [0, 1, 0]));
+        const up = cross3(right, fwd);
+        const tanHalf = Math.tan((40 * Math.PI) / 360);
+        return { pos, fwd, right, up, tanHalf };
+      }
+
+      function proj(cam, p) {
+        const rx = p[0] - cam.pos[0], ry = p[1] - cam.pos[1], rz = p[2] - cam.pos[2];
+        const cz = rx * cam.fwd[0] + ry * cam.fwd[1] + rz * cam.fwd[2];
+        if (cz <= 0.2) return null;
+        const cx = rx * cam.right[0] + ry * cam.right[1] + rz * cam.right[2];
+        const cy = rx * cam.up[0] + ry * cam.up[1] + rz * cam.up[2];
+        const fY = 1 / cam.tanHalf;
+        const fX = fY / (RW / RH);
+        return [RW * 0.5 + (cx / cz) * fX * (RW * 0.5), RH * 0.5 - (cy / cz) * fY * (RH * 0.5), cz];
+      }
+
+      function computePose(t) {
+        const p = { yaw: 0.2, pitch: 0.24, recoilL: 0, recoilR: 0, recoilM: 0, spinAngle: 0, radarAngle: t * 1.4, petalOpen: 0.08, corePulse: 0.1, explode: 0, shake: 0 };
+        if (currentAct === "standby") {
+          p.yaw = Math.sin(t * 0.6) * 0.28;
+          p.pitch = 0.22 + Math.sin(t * 0.9) * 0.06;
+        } else if (currentAct === "track") {
+          p.yaw = Math.sin(t * 1.8) * 1.25;
+          p.pitch = 0.35 + Math.cos(t * 1.5) * 0.14;
+        } else if (currentAct === "elevate") {
+          p.yaw = Math.sin(t * 0.8) * 0.45;
+          p.pitch = 0.58 + Math.sin(t * 2.2) * 0.34;
+        } else if (currentAct === "fire") {
+          const ph = (t * 7.5) % 1;
+          p.yaw = 0.22 + Math.sin(t * 1.2) * 0.25;
+          p.pitch = 0.48;
+          p.recoilL = Math.max(0, 1 - ph * 2.2) * 0.65;
+          p.recoilR = Math.max(0, 1 - ((ph + 0.5) % 1) * 2.2) * 0.65;
+          p.recoilM = Math.max(0, 1 - ((ph + 0.25) % 1) * 2.2) * 0.7;
+          p.spinAngle = t * 16;
+          p.petalOpen = 0.72;
+          p.corePulse = 0.55 + Math.sin(t * 18) * 0.25;
+          p.shake = 0.45;
+        } else if (currentAct === "recoil") {
+          const ph = (t * 4.5) % 1;
+          p.yaw = 0.18;
+          p.pitch = 0.56 + Math.sin(ph * Math.PI) * 0.12;
+          p.recoilL = ph < 0.5 ? (1 - ph * 2) * 0.85 : 0;
+          p.recoilR = ph >= 0.5 ? (1 - (ph - 0.5) * 2) * 0.85 : 0;
+          p.recoilM = Math.abs(Math.sin(t * 9)) * 0.78;
+          p.spinAngle = t * 22;
+          p.petalOpen = 0.88;
+          p.shake = 0.75;
+        } else if (currentAct === "charge") {
+          p.yaw = 0.18;
+          p.pitch = 0.66;
+          p.petalOpen = 0.5 + Math.sin(t * 3.5) * 0.5;
+          p.corePulse = 0.7 + Math.sin(t * 12) * 0.35;
+          p.shake = 0.35;
+        } else if (currentAct === "overheat") {
+          p.yaw = -0.15;
+          p.pitch = 0.14;
+          p.petalOpen = 0.55;
+          p.shake = 0.2;
+        } else if (currentAct === "damaged") {
+          p.explode = 0.45 + Math.abs(Math.sin(t * 2.4)) * 0.55;
+          p.shake = 0.85;
+        }
+        return p;
+      }
+
+      function render3DStage(dt) {
+        const model = turrets[selectedIdx];
+        const pose = computePose(simTime);
+        const cam = makeCam();
+        const lightDir = norm3([-0.55, 0.78, 0.45]);
+
+        // Deep Space Gradient Backdrop
+        const g = octx.createLinearGradient(0, 0, 0, RH);
+        g.addColorStop(0, "#040814");
+        g.addColorStop(1, "#0b1a36");
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, RW, RH);
+
+        // Moving space stars
+        for (const st of stars) {
+          const sx = (st.x + simTime * st.sp) % RW;
+          octx.fillStyle = st.c;
+          octx.fillRect(Math.floor(sx), Math.floor(st.y), 1, 1);
+        }
+
+        // Distant Planet in Upper Left
+        octx.fillStyle = "#1b4e8f";
+        octx.beginPath(); octx.arc(46, 40, 22, 0, Math.PI * 2); octx.fill();
+        octx.fillStyle = "#3988cf";
+        octx.beginPath(); octx.arc(41, 35, 16, 0, Math.PI * 2); octx.fill();
+
+        // Extended Federation Capital Ship Hull Deck Grid beneath turret!
+        octx.strokeStyle = "rgba(82, 224, 255, 0.24)";
+        octx.lineWidth = 1;
+        for (let k = -6; k <= 6; k += 2) {
+          const a = proj(cam, [k, 0, -6]), b = proj(cam, [k, 0, 6]);
+          if (a && b) { octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); }
+          const c = proj(cam, [-6, 0, k]), d = proj(cam, [6, 0, k]);
+          if (c && d) { octx.beginPath(); octx.moveTo(c[0], c[1]); octx.lineTo(d[0], d[1]); octx.stroke(); }
+        }
+
+        // Transform & Painter's-Sort Turret Faces
+        const verts = CT.transformTurretVerts(model, { ...pose, explode: 0 });
+        const drawList = [];
+        for (let fi = 0; fi < model.faces.length; fi++) {
+          const f = model.faces[fi];
+          const [ia, ib, ic] = f.i;
+          const tag = model.vTags[ia];
+          let va = verts[ia], vb = verts[ib], vc = verts[ic];
+          if (pose.explode > 0 && tag !== "deck" && tag !== "base") {
+            const ang = fi * 2.39996;
+            const spd = 0.5 + (fi % 5) * 0.25;
+            const dx = Math.cos(ang) * pose.explode * spd * 1.4;
+            const dy = (0.35 + ((fi * 7) % 10) * 0.14) * pose.explode * 1.5;
+            const dz = Math.sin(ang) * pose.explode * spd * 1.4;
+            va = [va[0] + dx, va[1] + dy, va[2] + dz];
+            vb = [vb[0] + dx, vb[1] + dy, vb[2] + dz];
+            vc = [vc[0] + dx, vc[1] + dy, vc[2] + dz];
+          }
+          const ab = [vb[0] - va[0], vb[1] - va[1], vb[2] - va[2]];
+          const ac = [vc[0] - va[0], vc[1] - va[1], vc[2] - va[2]];
+          const n = norm3(cross3(ab, ac));
+          const view = [cam.pos[0] - va[0], cam.pos[1] - va[1], cam.pos[2] - va[2]];
+          if (!wireframe && dot3(n, view) < -0.05) continue;
+
+          const pa = proj(cam, va), pb = proj(cam, vb), pc = proj(cam, vc);
+          if (!pa || !pb || !pc) continue;
+          const depth = (pa[2] + pb[2] + pc[2]) / 3;
+          let lum = f.e ? 1.15 : (0.36 + Math.max(0, dot3(n, lightDir)) * 0.68 + Math.max(0, n[1]) * 0.18);
+          if (currentAct === "charge" && f.e) lum *= 1.3;
+          drawList.push({ pa, pb, pc, depth, f, lum, tag });
+        }
+        drawList.sort((a, b) => b.depth - a.depth);
+
+        for (const item of drawList) {
+          const { pa, pb, pc, f, lum, tag } = item;
+          octx.beginPath();
+          octx.moveTo(pa[0], pa[1]);
+          octx.lineTo(pb[0], pb[1]);
+          octx.lineTo(pc[0], pc[1]);
+          octx.closePath();
+
+          if (wireframe) {
+            octx.strokeStyle = f.e ? "#ffe478" : "#54eeff";
+            octx.lineWidth = 1;
+            octx.stroke();
+          } else {
+            let r = f.c[0] * lum, gr = f.c[1] * lum, bl = f.c[2] * lum;
+            if (currentAct === "overheat" && tag !== "deck" && tag !== "base") {
+              r = r * 0.58 + 255 * 0.42; gr = gr * 0.58 + 80 * 0.42; bl = bl * 0.58 + 36 * 0.42;
+            }
+            r = Math.min(255, Math.round(r / 16) * 16);
+            gr = Math.min(255, Math.round(gr / 16) * 16);
+            bl = Math.min(255, Math.round(bl / 16) * 16);
+            octx.fillStyle = `rgb(${r},${gr},${bl})`;
+            octx.fill();
+            octx.strokeStyle = "rgba(8,14,28,0.45)";
+            octx.lineWidth = 0.6;
+            octx.stroke();
+          }
+        }
+
+        // Live 3D Muzzle Fire / Charge / Steam / Blast VFX
+        const aimDir = [Math.sin(pose.yaw) * Math.cos(pose.pitch), Math.sin(pose.pitch), Math.cos(pose.yaw) * Math.cos(pose.pitch)];
+        for (let mi = 0; mi < model.muzzles.length; mi++) {
+          const mw = CT.getMuzzleWorld(model, pose, mi);
+          const pm = proj(cam, mw);
+          const pf = proj(cam, [mw[0] + aimDir[0] * 8, mw[1] + aimDir[1] * 8, mw[2] + aimDir[2] * 8]);
+          if (!pm || !pf) continue;
+
+          if (currentAct === "track" || currentAct === "elevate") {
+            octx.strokeStyle = model.coreColor;
+            octx.lineWidth = 1;
+            octx.beginPath(); octx.moveTo(pm[0], pm[1]); octx.lineTo(pf[0], pf[1]); octx.stroke();
+          } else if (currentAct === "fire" || currentAct === "recoil") {
+            const bw = model.weaponStyle === "yamato_nova" ? 6 : 3;
+            octx.strokeStyle = model.fireColor;
+            octx.lineWidth = bw + 2;
+            octx.beginPath(); octx.moveTo(pm[0], pm[1]); octx.lineTo(pf[0], pf[1]); octx.stroke();
+            octx.strokeStyle = "#ffffff";
+            octx.lineWidth = Math.max(1, bw - 1);
+            octx.beginPath(); octx.moveTo(pm[0], pm[1]); octx.lineTo(pf[0], pf[1]); octx.stroke();
+            octx.fillStyle = "#ffffff";
+            octx.beginPath(); octx.arc(pm[0], pm[1], 4 + Math.sin(simTime * 30) * 1.5, 0, Math.PI * 2); octx.fill();
+          } else if (currentAct === "charge") {
+            octx.strokeStyle = model.coreColor;
+            octx.lineWidth = 1.5;
+            octx.beginPath(); octx.arc(pm[0], pm[1], 6 + Math.sin(simTime * 16) * 3, 0, Math.PI * 2); octx.stroke();
+          }
+        }
+
+        if (currentAct === "overheat") {
+          for (let k = 0; k < 6; k++) {
+            const p = proj(cam, [Math.sin(k * 2 + simTime * 2) * 1.2, 2.5 + ((simTime * 2 + k * 0.4) % 2.4), Math.cos(k * 3) * 1.0]);
+            if (p) {
+              octx.fillStyle = "rgba(235,244,255,0.65)";
+              octx.beginPath(); octx.arc(p[0], p[1], 4, 0, Math.PI * 2); octx.fill();
+            }
+          }
+        } else if (currentAct === "damaged") {
+          const pc = proj(cam, [0, 2.2, 0]);
+          if (pc) {
+            octx.strokeStyle = "#56e8ff";
+            octx.lineWidth = 2;
+            octx.beginPath(); octx.arc(pc[0], pc[1], 28 + Math.sin(simTime * 18) * 4, 0, Math.PI * 2); octx.stroke();
+            octx.fillStyle = "rgba(255,112,42,0.85)";
+            octx.beginPath(); octx.arc(pc[0], pc[1], 14 + Math.sin(simTime * 22) * 4, 0, Math.PI * 2); octx.fill();
+          }
+        }
+      }
+
+      // ======================================================================
+      // INTERACTIVE SEATED-INSIDE STARSHIP TURRET COCKPIT MODE!
+      // ======================================================================
+      function renderSeatedCockpit(dt) {
+        const model = turrets[selectedIdx];
+        const cp = model.cockpit;
+        const aimX = RW * 0.5 + aimNormX * 86;
+        const aimY = 66 + aimNormY * 36;
+
+        if (cockpitFiring) {
+          cockpitRecoil = Math.min(1, cockpitRecoil + dt * 14);
+          cockpitHeat = Math.min(1, cockpitHeat + dt * 0.42);
+        } else {
+          cockpitRecoil = Math.max(0, cockpitRecoil - dt * 9);
+          cockpitHeat = Math.max(0, cockpitHeat - dt * 0.35);
+        }
+
+        // 1. Deep Space Starfield & Planet shifting with turret swivel!
+        const g = octx.createLinearGradient(0, 0, 0, 136);
+        g.addColorStop(0, "#040a1c");
+        g.addColorStop(1, "#102850");
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, RW, 140);
+
+        for (const st of stars) {
+          const sx = (st.x - aimNormX * 26 + RW * 2) % RW;
+          const sy = (st.y * 0.72 - aimNormY * 14 + 135) % 135;
+          octx.fillStyle = st.c;
+          octx.fillRect(Math.floor(sx), Math.floor(sy), 1, 1);
+        }
+
+        // Planet outside window
+        const px = 228 - aimNormX * 22, py = 72 - aimNormY * 12;
+        octx.fillStyle = "#2268b8";
+        octx.beginPath(); octx.arc(px, py, 34, 0, Math.PI * 2); octx.fill();
+        octx.fillStyle = "#52b4f2";
+        octx.beginPath(); octx.arc(px - 8, py - 6, 25, 0, Math.PI * 2); octx.fill();
+
+        // 2. Massive Capital Starship Armored Hull Deck outside lower window!
+        const hy = 114 - aimNormY * 8;
+        octx.fillStyle = "#2b3d5c";
+        octx.beginPath();
+        octx.moveTo(0, 142); octx.lineTo(36, hy); octx.lineTo(124, hy + 8);
+        octx.lineTo(196, hy + 8); octx.lineTo(284, hy); octx.lineTo(RW, 142);
+        octx.closePath(); octx.fill();
+
+        octx.fillStyle = "#466086";
+        octx.beginPath();
+        octx.moveTo(32, 142); octx.lineTo(62, hy + 4); octx.lineTo(258, hy + 4); octx.lineTo(288, 142);
+        octx.closePath(); octx.fill();
+
+        // Gold & Cyan Starship Hull Conduit Strips
+        octx.strokeStyle = "#e8ba44"; octx.lineWidth = 2;
+        octx.beginPath(); octx.moveTo(52, 138); octx.lineTo(94, hy + 6); octx.stroke();
+        octx.beginPath(); octx.moveTo(268, 138); octx.lineTo(226, hy + 6); octx.stroke();
+        octx.strokeStyle = "#52f0ff"; octx.lineWidth = 2;
+        octx.beginPath(); octx.moveTo(86, 138); octx.lineTo(118, hy + 7); octx.stroke();
+        octx.beginPath(); octx.moveTo(234, 138); octx.lineTo(202, hy + 7); octx.stroke();
+
+        // 3. Moving Zerg Targets & Hit Detection!
+        for (const tg of cockpitTargets) {
+          tg.x += tg.vx * dt;
+          if (tg.x > 0.72 || tg.x < -0.72) tg.vx *= -1;
+          tg.hitFlash = Math.max(0, tg.hitFlash - dt * 5);
+          const tx = RW * 0.5 + tg.x * 130 - aimNormX * 16;
+          const ty = 62 + tg.y * 90 + Math.sin(simTime * 3 + tg.x * 5) * 6 - aimNormY * 10;
+          const sc = tg.big ? 3 : 2;
+          const hit = cockpitFiring && Math.hypot(tx - aimX, ty - aimY) < 18;
+          if (hit) {
+            tg.hitFlash = 1;
+            cockpitSparks.push({ x: tx + (Math.random() - 0.5) * 8, y: ty + (Math.random() - 0.5) * 8, life: 0.25 });
+          }
+          // Zerg Pixel Silhouette
+          octx.fillStyle = tg.hitFlash > 0.2 ? "#fff4a8" : "#a8243e";
+          octx.fillRect(tx - 4 * sc, ty - sc, 3 * sc, 2 * sc);
+          octx.fillRect(tx + 2 * sc, ty - sc, 3 * sc, 2 * sc);
+          octx.fillStyle = tg.hitFlash > 0.2 ? "#ffffff" : "#dc3e54";
+          octx.fillRect(tx - sc, ty - 2 * sc, 3 * sc, 4 * sc);
+          octx.fillStyle = "#76ff6e";
+          octx.fillRect(tx, ty, sc, sc);
+        }
+
+        // 4. Turret's OWN Barrels Protruding from Cockpit & Live Fire!
+        const recPx = cockpitRecoil * 7;
+        const barrelPairs = model.muzzles.length >= 4
+          ? [[36, 118, 96, 76], [36, 132, 96, 88], [284, 118, 224, 76], [284, 132, 224, 88]]
+          : (model.muzzles.length === 3
+            ? [[66, 138, 120, 92], [160, 140, 160, 94], [254, 138, 200, 92]]
+            : [[46, 134, 110, 86], [274, 134, 210, 86]]);
+
+        barrelPairs.forEach((bp, i) => {
+          const sx = bp[0], sy = bp[1];
+          const ex = bp[2] + aimNormX * 26, ey = bp[3] + aimNormY * 14 + ((i % 2 === 0 ? recPx : recPx * 0.5));
+          octx.strokeStyle = "#3c4f6e"; octx.lineWidth = 8;
+          octx.beginPath(); octx.moveTo(sx, sy); octx.lineTo(ex, ey); octx.stroke();
+          octx.strokeStyle = "#88a8cc"; octx.lineWidth = 3;
+          octx.beginPath(); octx.moveTo(sx, sy - 1); octx.lineTo(ex, ey - 1); octx.stroke();
+          if (cockpitFiring) {
+            octx.strokeStyle = model.fireColor; octx.lineWidth = model.weaponStyle === "yamato_nova" ? 7 : 3;
+            octx.beginPath(); octx.moveTo(ex, ey); octx.lineTo(aimX, aimY); octx.stroke();
+            octx.strokeStyle = "#ffffff"; octx.lineWidth = 1.5;
+            octx.beginPath(); octx.moveTo(ex, ey); octx.lineTo(aimX, aimY); octx.stroke();
+            octx.fillStyle = "#ffffff";
+            octx.beginPath(); octx.arc(ex, ey, 5 + Math.random() * 3, 0, Math.PI * 2); octx.fill();
+          }
+        });
+
+        // Impact sparks
+        for (let i = cockpitSparks.length - 1; i >= 0; i--) {
+          const sp = cockpitSparks[i];
+          sp.life -= dt;
+          if (sp.life <= 0) { cockpitSparks.splice(i, 1); continue; }
+          octx.fillStyle = "#ffae38";
+          octx.beginPath(); octx.arc(sp.x, sp.y, sp.life * 26, 0, Math.PI * 2); octx.fill();
+          octx.fillStyle = "#fff8c4";
+          octx.beginPath(); octx.arc(sp.x, sp.y, sp.life * 12, 0, Math.PI * 2); octx.fill();
+        }
+
+        // 5. Holographic Gunner Targeting Reticle
+        octx.strokeStyle = cockpitFiring ? "#ffe268" : cp.hudCol;
+        octx.lineWidth = 1.5;
+        octx.beginPath(); octx.arc(aimX, aimY, 14, 0, Math.PI * 2); octx.stroke();
+        octx.beginPath();
+        octx.moveTo(aimX - 22, aimY); octx.lineTo(aimX - 8, aimY);
+        octx.moveTo(aimX + 8, aimY); octx.lineTo(aimX + 22, aimY);
+        octx.moveTo(aimX, aimY - 19); octx.lineTo(aimX, aimY - 8);
+        octx.moveTo(aimX, aimY + 8); octx.lineTo(aimX, aimY + 19);
+        octx.stroke();
+
+        // 6. Armored Starship Turret Canopy Frame + Bubble Struts
+        octx.fillStyle = cp.frameCol;
+        octx.fillRect(0, 0, RW, 16);
+        octx.beginPath(); octx.moveTo(0, 0); octx.lineTo(42, 0); octx.lineTo(28, 134); octx.lineTo(0, 134); octx.fill();
+        octx.beginPath(); octx.moveTo(RW, 0); octx.lineTo(RW - 42, 0); octx.lineTo(RW - 28, 134); octx.lineTo(RW, 134); octx.fill();
+        octx.strokeStyle = cp.trimCol; octx.lineWidth = 2;
+        octx.beginPath(); octx.moveTo(38, 16); octx.lineTo(25, 132); octx.stroke();
+        octx.beginPath(); octx.moveTo(RW - 38, 16); octx.lineTo(RW - 25, 132); octx.stroke();
+
+        if (cp.theme === "ball_bubble") {
+          octx.strokeStyle = "rgba(110,145,186,0.7)"; octx.lineWidth = 2;
+          octx.beginPath(); octx.moveTo(32, 16); octx.lineTo(86, 44); octx.lineTo(234, 44); octx.lineTo(288, 16); octx.stroke();
+        }
+
+        // 7. Seated Console Dashboard + Live Capital Ship Radar + Gloved Hands on Yoke!
+        octx.fillStyle = "#182438";
+        octx.beginPath(); octx.moveTo(0, RH); octx.lineTo(0, 132); octx.lineTo(54, 124); octx.lineTo(266, 124); octx.lineTo(RW, 132); octx.lineTo(RW, RH); octx.closePath(); octx.fill();
+        octx.strokeStyle = cp.frameHi; octx.lineWidth = 2;
+        octx.beginPath(); octx.moveTo(0, 132); octx.lineTo(54, 124); octx.lineTo(266, 124); octx.lineTo(RW, 132); octx.stroke();
+
+        // Left Reactor / Shield / Heat CRT
+        octx.fillStyle = "#06101c"; octx.fillRect(22, 140, 74, 48);
+        octx.strokeStyle = cp.frameHi; octx.lineWidth = 1; octx.strokeRect(22, 140, 74, 48);
+        octx.fillStyle = "#52f2ff"; octx.fillRect(28, 148, 56, 6);
+        octx.fillStyle = cockpitHeat > 0.72 ? "#ff4c4c" : "#ffbe48";
+        octx.fillRect(28, 160, Math.round(62 * (0.2 + cockpitHeat * 0.8)), 6);
+        for (let b = 0; b < 6; b++) {
+          octx.fillStyle = b < 5 ? cp.trimCol : "#2a384c";
+          octx.fillRect(28 + b * 10, 173, 7, 5);
+        }
+
+        // Center Capital Starship Tactical Space Radar!
+        octx.fillStyle = "#061220"; octx.fillRect(108, 136, 104, 56);
+        octx.strokeStyle = cp.trimCol; octx.strokeRect(108, 136, 104, 56);
+        const rx = 160, ry = 164;
+        octx.strokeStyle = cp.hudCol; octx.lineWidth = 1;
+        octx.beginPath(); octx.arc(rx, ry, 22, 0, Math.PI * 2); octx.stroke();
+        // Firing Cone following mouse aim!
+        octx.fillStyle = "rgba(94,242,255,0.22)";
+        octx.beginPath();
+        octx.moveTo(rx, ry);
+        octx.lineTo(rx + aimNormX * 16 - 10, ry - 20);
+        octx.lineTo(rx + aimNormX * 16 + 10, ry - 20);
+        octx.closePath(); octx.fill();
+        // Capital Ship Mini Silhouette in Center
+        octx.fillStyle = "#e6f4ff"; octx.fillRect(rx - 2, ry - 7, 4, 14);
+        octx.fillStyle = "#e8ba44"; octx.fillRect(rx - 6, ry - 1, 12, 3);
+        // Live Red Zerg Radar Blips!
+        for (const tg of cockpitTargets) {
+          octx.fillStyle = "#ff4e62";
+          octx.fillRect(Math.round(rx + tg.x * 20), Math.round(ry - 12 + tg.y * 10), 3, 3);
+        }
+
+        // Right Turret Elevation Schematic CRT
+        octx.fillStyle = "#06101c"; octx.fillRect(224, 140, 74, 48);
+        octx.strokeStyle = cp.frameHi; octx.strokeRect(224, 140, 74, 48);
+        octx.fillStyle = "#486892"; octx.fillRect(232, 174, 58, 6);
+        octx.fillStyle = cp.hudCol; octx.fillRect(248, 165, 20, 9);
+        octx.strokeStyle = cp.trimCol; octx.lineWidth = 3;
+        octx.beginPath();
+        octx.moveTo(260, 167);
+        octx.lineTo(286, 152 + aimNormY * 10);
+        octx.stroke();
+
+        // Gloved Gunner Hands Gripping Space Gunnery Yoke (moves dynamically with aim + recoil!)
+        const hxOff = aimNormX * 12;
+        const hyOff = aimNormY * 5 + cockpitRecoil * 5;
+        octx.strokeStyle = cp.frameHi; octx.lineWidth = 4;
+        octx.beginPath(); octx.moveTo(86 + hxOff, 176 + hyOff); octx.lineTo(234 + hxOff, 176 + hyOff); octx.stroke();
+        octx.fillStyle = cp.trimCol; octx.fillRect(144 + hxOff, 173 + hyOff, 32, 8);
+
+        for (const side of [-1, 1]) {
+          const gx = (side < 0 ? 80 : 240) + hxOff;
+          const gy = 166 + hyOff;
+          // Space-suit forearm
+          octx.strokeStyle = "#364d72"; octx.lineWidth = 14;
+          octx.beginPath(); octx.moveTo(gx + side * 26, RH + 4); octx.lineTo(gx, gy + 8); octx.stroke();
+          octx.fillStyle = "#e8ba44"; octx.fillRect(gx - 8, gy + 8, 16, 4);
+          // Armored gunner glove + glowing fire button
+          octx.fillStyle = "#222c3e"; octx.fillRect(gx - 9, gy - 6, 18, 14);
+          octx.fillStyle = "#4c6282"; octx.fillRect(gx - 7, gy - 4, 14, 9);
+          octx.fillStyle = cockpitFiring ? "#ffffff" : model.fireColor;
+          octx.fillRect(gx - 4, gy - 12, 8, 5);
+        }
+      }
+
+      // Main Animation Loop
+      let lastT = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - lastT) / 1000);
+        lastT = now;
+        simTime += dt;
+
+        if (autoDemo && viewMode === "3d") {
+          demoTimer += dt;
+          if (demoTimer > 2.4) {
+            demoTimer = 0;
+            const curI = actions.findIndex((a) => a.key === currentAct);
+            setAction(actions[(curI + 1) % actions.length].key);
+          }
+        }
+
+        const cw = canvas.clientWidth || 640;
+        const ch = canvas.clientHeight || 400;
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw; canvas.height = ch;
+        }
+        ctx.imageSmoothingEnabled = false;
+
+        if (viewMode === "3d") {
+          render3DStage(dt);
+          ctx.drawImage(off, 0, 0, RW, RH, 0, 0, cw, ch);
+        } else if (viewMode === "cockpit") {
+          renderSeatedCockpit(dt);
+          ctx.drawImage(off, 0, 0, RW, RH, 0, 0, cw, ch);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      selectTurret(0);
+      setAction("standby");
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
