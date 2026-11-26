@@ -698,10 +698,119 @@ html, body {
   .skill-chip .sk-st { font-size: 10px; }
 }
 
-@media (max-width: 720px) {
-  .target-panel { top: 96px; width: min(300px, 88vw); }
-  #comms-bar { top: 170px; }
-  #boss-bar { top: 216px; width: min(320px, 84vw); }
+/* Mobile Portrait & Narrow Screen Clean Anti-Overlap Layout */
+@media (max-width: 768px) {
+  .desktop-quick {
+    display: none !important;
+  }
+  #hud-player {
+    top: 6px;
+    left: 6px;
+    width: calc(52% - 9px);
+    padding: 5px 7px;
+    gap: 4px;
+  }
+  .flight-panel {
+    top: 6px;
+    right: 6px;
+    width: calc(48% - 9px);
+    padding: 5px 7px;
+    gap: 2px;
+  }
+  .hud-panel-head {
+    display: none;
+  }
+  .hud-lbl,
+  .hud-num,
+  .hud-tag,
+  .hud-telemetry,
+  .hud-telemetry strong {
+    font-size: 11px;
+  }
+  .hud-num {
+    min-width: 24px;
+  }
+  .hud-bar-track {
+    height: 8px;
+  }
+  .hud-mini-status {
+    display: none;
+  }
+  /* Row 2: Enemy Target Card sits cleanly BELOW Row 1 with zero overlap! */
+  .target-panel {
+    top: 88px;
+    width: calc(100% - 14px);
+    max-width: 350px;
+    min-width: 0;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+  .hud-target-icon-wrap {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+  .hud-target-sprite {
+    transform: scale(0.75);
+    transform-origin: center;
+  }
+  .hud-target-name { font-size: 12px; }
+  .hud-target-act, .hud-target-dist { font-size: 11px; }
+  #comms-bar {
+    top: 150px;
+    max-width: 92vw;
+    padding: 4px 8px;
+  }
+  #boss-bar {
+    top: 192px;
+    width: min(320px, 88vw);
+  }
+  /* Skills bar on mobile floats neatly in a compact tray ABOVE thumb pads ONLY when toggled open! */
+  #hud-skills {
+    left: 8px;
+    right: 8px;
+    bottom: 128px;
+    background: rgba(5, 14, 28, 0.88);
+    border: 1px solid rgba(72, 218, 255, 0.65);
+    padding: 6px;
+    gap: 5px;
+    z-index: 22;
+  }
+  .skill-chip {
+    min-width: calc(25% - 5px);
+    padding: 4px 3px 6px;
+  }
+  .skill-chip .sk-key { font-size: 10px; }
+  .skill-chip .sk-st { font-size: 9px; }
+  #control-dock {
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+  }
+  #dock-bar-top {
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-height: 28px;
+  }
+  #dock-bar-top .dock-group {
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-width: 0;
+  }
+  #dock-bar-top .dock-btn {
+    font-size: 11px;
+    padding: 4px 6px;
+    white-space: nowrap;
+  }
+  #dock-bar-top .dock-readout {
+    font-size: 10px;
+    padding: 4px 5px;
+    white-space: nowrap;
+  }
+  #dock-mission {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .boss-label {
@@ -904,17 +1013,208 @@ kbd {
   color: #ffd166;
 }
 
-/* Bottom Control Dock */
+/* Bottom Slim Control Bar + Collapsible Command Menu Drawer */
 #control-dock {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  padding: 5px 10px calc(5px + env(safe-area-inset-bottom, 0px));
+  background: #081224;
+  border-top: 2px solid #235887;
+  z-index: 26;
+}
+
+#dock-bar-top {
+  display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+  min-height: 30px;
+}
+
+#dock-menu-drawer {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  max-height: 68vh;
+  overflow-y: auto;
+  background: rgba(6, 16, 34, 0.96);
+  border: 2px solid #48d8ff;
+  box-shadow: 0 0 0 2px #030812, 0 -6px 26px rgba(0, 0, 0, 0.75);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 35;
+  backdrop-filter: blur(6px);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(72, 216, 255, 0.35);
+  padding-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7ee8ff;
+  letter-spacing: 1px;
+}
+
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.drawer-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+/* Mobile Thumb Combat Overlay (Joystick left + Attack/Missile/Boost right) */
+#mobile-combat-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+}
+
+#touch-pad {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid rgba(94, 242, 255, 0.65);
+  background: radial-gradient(circle, rgba(16, 48, 82, 0.42), rgba(4, 14, 28, 0.62));
+  box-shadow: 0 0 12px rgba(72, 218, 255, 0.25);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-pad-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(138, 240, 255, 0.72);
+  pointer-events: none;
+}
+
+#touch-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  margin-left: -19px;
+  margin-top: -19px;
+  border-radius: 50%;
+  background: rgba(94, 242, 255, 0.78);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(94, 242, 255, 0.65);
+}
+
+#mobile-action-pad {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
-  padding: 7px 12px;
-  background: #091224;
-  border-top: 2px solid #204a73;
-  z-index: 20;
+  pointer-events: none;
+}
+
+.mob-arc-row,
+.mob-main-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.mob-btn {
+  pointer-events: auto;
+  touch-action: none;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", monospace;
+  font-weight: 700;
+  color: #ffffff;
+  border-radius: 50%;
+  border: 2px solid #5ef2ff;
+  background: rgba(8, 26, 48, 0.76);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 1px 1px 0 #000;
+  cursor: pointer;
+}
+
+.mob-btn:active,
+.mob-btn.pressed {
+  transform: scale(0.93);
+  filter: brightness(1.25);
+}
+
+.mob-btn.small {
+  width: 46px;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.mob-btn.small.skill {
+  border-color: #7effb2;
+  background: rgba(10, 44, 28, 0.82);
+  color: #b8ffd2;
+}
+
+.mob-btn.small.skill.active {
+  border-color: #ffea61;
+  background: rgba(102, 74, 8, 0.9);
+  color: #ffea61;
+}
+
+.mob-btn.small.warn {
+  border-color: #ffd166;
+  background: rgba(84, 58, 12, 0.82);
+  color: #ffe899;
+}
+
+.mob-btn.small.cyan {
+  border-color: #5ef2ff;
+  background: rgba(10, 56, 84, 0.82);
+  color: #aef9ff;
+}
+
+.mob-btn.med {
+  width: 56px;
+  height: 56px;
+  font-size: 11px;
+  border-color: #ffd166;
+  background: radial-gradient(circle, rgba(140, 92, 12, 0.88), rgba(66, 38, 6, 0.9));
+}
+
+.mob-btn.med span {
+  font-size: 11px;
+  color: #ffea61;
+}
+
+.mob-btn.big.fire {
+  width: 68px;
+  height: 68px;
+  font-size: 13px;
+  border-color: #ff6b7a;
+  background: radial-gradient(circle, rgba(220, 42, 64, 0.92), rgba(118, 14, 28, 0.94));
+  box-shadow: 0 0 16px rgba(255, 68, 92, 0.55);
 }
 
 .dock-group {
@@ -975,32 +1275,7 @@ kbd {
   display: none;
 }
 
-/* Touch Pad */
-#touch-pad {
-  position: fixed;
-  left: 18px;
-  bottom: 64px;
-  width: 112px;
-  height: 112px;
-  border-radius: 50%;
-  border: 2px solid rgba(94, 242, 255, 0.55);
-  background: rgba(8, 22, 42, 0.45);
-  z-index: 25;
-  touch-action: none;
-}
-
-#touch-knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 44px;
-  height: 44px;
-  margin-left: -22px;
-  margin-top: -22px;
-  border-radius: 50%;
-  background: rgba(94, 242, 255, 0.72);
-  border: 2px solid #fff;
-}
+/* Keep old duplicate #touch-pad block removed cleanly */
 
 .hidden {
   display: none !important;

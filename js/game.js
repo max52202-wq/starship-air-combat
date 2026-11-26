@@ -63,12 +63,60 @@
   const btnZoneSpace = document.getElementById("btn-zone-space");
   const btnBoost = document.getElementById("btn-boost");
   const btnMute = document.getElementById("btn-mute");
-  const btnFireLaser = document.getElementById("btn-fire-laser");
-  const btnFireMissile = document.getElementById("btn-fire-missile");
+  const btnToggleMenu = document.getElementById("btn-toggle-menu");
+  const btnCloseDrawer = document.getElementById("btn-close-drawer");
+  const dockMenuDrawer = document.getElementById("dock-menu-drawer");
+  const btnToggleSkills = document.getElementById("btn-toggle-skills");
+  const btnCamDrawer = document.getElementById("btn-cam-drawer");
+  const btnZoneSpaceDrawer = document.getElementById("btn-zone-space-drawer");
+  const mobileCombatUI = document.getElementById("mobile-combat-ui");
+  const mobLaser = document.getElementById("mob-laser");
+  const mobMissile = document.getElementById("mob-missile");
+  const mobMissileNum = document.getElementById("mob-missile-num");
+  const mobBoost = document.getElementById("mob-boost");
+  const mobUTurn = document.getElementById("mob-uturn");
+  const mobSkillsToggle = document.getElementById("mob-skills-toggle");
   const dockMission = document.getElementById("dock-mission");
   const dockScore = document.getElementById("dock-score");
   const touchPad = document.getElementById("touch-pad");
   const touchKnob = document.getElementById("touch-knob");
+
+  const isCoarsePointer = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  // On mobile/narrow viewports, skills bar starts collapsed so it NEVER blocks the starship!
+  let skillsPanelOpen = window.innerWidth > 860;
+
+  function isMobileLayout() {
+    return window.innerWidth <= 900 || isCoarsePointer;
+  }
+
+  function syncSkillsToggleUI() {
+    if (btnToggleSkills) {
+      btnToggleSkills.textContent = skillsPanelOpen ? "✦ 技能：開" : "✦ 技能";
+      btnToggleSkills.classList.toggle("active", skillsPanelOpen);
+    }
+    if (mobSkillsToggle) {
+      mobSkillsToggle.textContent = skillsPanelOpen ? "✕ 收合" : "✦ 技能";
+      mobSkillsToggle.classList.toggle("active", skillsPanelOpen);
+    }
+  }
+
+  function toggleSkillsPanel() {
+    skillsPanelOpen = !skillsPanelOpen;
+    syncSkillsToggleUI();
+  }
+
+  function toggleMenuDrawer(forceState) {
+    if (!dockMenuDrawer) return;
+    const willOpen = typeof forceState === "boolean"
+      ? forceState
+      : dockMenuDrawer.classList.contains("hidden");
+    dockMenuDrawer.classList.toggle("hidden", !willOpen);
+    if (btnToggleMenu) {
+      btnToggleMenu.textContent = willOpen ? "✕ 收合" : "☰ 選單";
+      btnToggleMenu.classList.toggle("active", willOpen);
+    }
+  }
+  syncSkillsToggleUI();
 
   const battleHud = document.getElementById("battle-hud");
   const hudPlayerBox = document.getElementById("hud-player");
@@ -133,7 +181,11 @@
     const isCockpit = viewMode === "cockpit";
     if (hudPlayerBox) hudPlayerBox.classList.toggle("hidden", isCockpit);
     if (hudFlightBox) hudFlightBox.classList.toggle("hidden", isCockpit);
-    if (hudSkillsBox) hudSkillsBox.classList.toggle("hidden", isCockpit);
+    if (hudSkillsBox) hudSkillsBox.classList.toggle("hidden", isCockpit || !skillsPanelOpen);
+    if (mobileCombatUI) {
+      mobileCombatUI.classList.toggle("hidden", !isMobileLayout() || gameMode !== "playing");
+    }
+    if (mobMissileNum) mobMissileNum.textContent = String(player.missiles);
 
     // Player stats
     const shPct = Math.max(0, Math.min(100, Math.round((player.shield / Math.max(1, player.maxShield)) * 100)));
@@ -229,6 +281,7 @@
   let pixW = 480;
   let pixH = 270;
 
+  let lastNarrowLayout = window.innerWidth <= 860;
   function resize() {
     const wrap = document.getElementById("viewport-wrap");
     const rect = wrap.getBoundingClientRect();
@@ -239,6 +292,12 @@
     glCanvas.height = pixH;
     fxCanvas.width = pixW;
     fxCanvas.height = pixH;
+    const nowNarrow = window.innerWidth <= 860;
+    if (nowNarrow !== lastNarrowLayout) {
+      lastNarrowLayout = nowNarrow;
+      skillsPanelOpen = !nowNarrow;
+      syncSkillsToggleUI();
+    }
   }
   window.addEventListener("resize", resize);
   resize();
@@ -2450,7 +2509,8 @@
     const modalOpen =
       !missionOverlay.classList.contains("hidden") ||
       !hangarOverlay.classList.contains("hidden") ||
-      !bestiaryOverlay.classList.contains("hidden");
+      !bestiaryOverlay.classList.contains("hidden") ||
+      (dockMenuDrawer && !dockMenuDrawer.classList.contains("hidden"));
 
     if (gameMode === "playing" && player && !modalOpen) {
       const res = updatePlayer(dt);
@@ -2735,6 +2795,10 @@
   });
 
   fxCanvas.addEventListener("mousedown", (e) => {
+    if (dockMenuDrawer && !dockMenuDrawer.classList.contains("hidden")) {
+      toggleMenuDrawer(false);
+      return;
+    }
     if (gameMode !== "playing") return;
     window.SFX.ensure();
     if (e.button === 0) mouseFire = true;
@@ -2766,6 +2830,20 @@
     else openMissionMap();
   });
 
+  // Auto-close command drawer when launching modals or switching zones
+  if (btnToggleMenu) btnToggleMenu.addEventListener("click", () => toggleMenuDrawer());
+  if (btnCloseDrawer) btnCloseDrawer.addEventListener("click", () => toggleMenuDrawer(false));
+  if (btnToggleSkills) btnToggleSkills.addEventListener("click", toggleSkillsPanel);
+  if (btnCamDrawer) btnCamDrawer.addEventListener("click", () => { toggleCamera(); toggleMenuDrawer(false); });
+  if (btnZoneSpaceDrawer) btnZoneSpaceDrawer.addEventListener("click", () => { warpToZone(true); toggleMenuDrawer(false); });
+
+  if (dockMenuDrawer) {
+    dockMenuDrawer.querySelectorAll("button").forEach((b) => {
+      if (b.id === "btn-close-drawer" || b.id === "btn-diff" || b.id === "btn-3d-mode" || b.id === "btn-autolock") return;
+      b.addEventListener("click", () => toggleMenuDrawer(false));
+    });
+  }
+
   btnCam.addEventListener("click", toggleCamera);
   btnAutoLock.addEventListener("click", toggleAutoLock);
   btnNextTarget.addEventListener("click", cycleNextTarget);
@@ -2781,30 +2859,72 @@
   if (btnFlares) btnFlares.addEventListener("click", triggerFlares);
   if (btnOverdrive) btnOverdrive.addEventListener("click", triggerOverdrive);
 
-  // Wire clickable Bottom-HUD Skill Chips
-  if (hudSkillChips.roll) hudSkillChips.roll.addEventListener("click", () => triggerBarrelRoll());
-  if (hudSkillChips.uturn) hudSkillChips.uturn.addEventListener("click", triggerUTurn);
-  if (hudSkillChips.shield) hudSkillChips.shield.addEventListener("click", triggerShieldDome);
-  if (hudSkillChips.beam) hudSkillChips.beam.addEventListener("click", triggerNovaBeam);
-  if (hudSkillChips.cloak) hudSkillChips.cloak.addEventListener("click", triggerCloakBlink);
-  if (hudSkillChips.emp) hudSkillChips.emp.addEventListener("click", triggerEMP);
-  if (hudSkillChips.flares) hudSkillChips.flares.addEventListener("click", triggerFlares);
-  if (hudSkillChips.overdrive) hudSkillChips.overdrive.addEventListener("click", triggerOverdrive);
+  // Wire clickable Bottom-HUD Skill Chips (auto-collapse on mobile after casting so sky stays clear!)
+  function wrapSkillClick(fn) {
+    return () => {
+      fn();
+      if (window.innerWidth <= 768 && skillsPanelOpen) {
+        skillsPanelOpen = false;
+        syncSkillsToggleUI();
+      }
+    };
+  }
+  if (hudSkillChips.roll) hudSkillChips.roll.addEventListener("click", wrapSkillClick(() => triggerBarrelRoll()));
+  if (hudSkillChips.uturn) hudSkillChips.uturn.addEventListener("click", wrapSkillClick(triggerUTurn));
+  if (hudSkillChips.shield) hudSkillChips.shield.addEventListener("click", wrapSkillClick(triggerShieldDome));
+  if (hudSkillChips.beam) hudSkillChips.beam.addEventListener("click", wrapSkillClick(triggerNovaBeam));
+  if (hudSkillChips.cloak) hudSkillChips.cloak.addEventListener("click", wrapSkillClick(triggerCloakBlink));
+  if (hudSkillChips.emp) hudSkillChips.emp.addEventListener("click", wrapSkillClick(triggerEMP));
+  if (hudSkillChips.flares) hudSkillChips.flares.addEventListener("click", wrapSkillClick(triggerFlares));
+  if (hudSkillChips.overdrive) hudSkillChips.overdrive.addEventListener("click", wrapSkillClick(triggerOverdrive));
   btnZoneEarth.addEventListener("click", () => warpToZone(false));
   btnZoneSpace.addEventListener("click", () => warpToZone(true));
 
-  btnBoost.addEventListener("mousedown", () => { touchBoost = true; });
-  btnBoost.addEventListener("mouseup", () => { touchBoost = false; });
-  btnBoost.addEventListener("mouseleave", () => { touchBoost = false; });
-  btnBoost.addEventListener("touchstart", (e) => { e.preventDefault(); touchBoost = true; });
-  btnBoost.addEventListener("touchend", () => { touchBoost = false; });
+  if (btnBoost) {
+    btnBoost.addEventListener("mousedown", () => { touchBoost = true; });
+    btnBoost.addEventListener("mouseup", () => { touchBoost = false; });
+    btnBoost.addEventListener("mouseleave", () => { touchBoost = false; });
+    btnBoost.addEventListener("touchstart", (e) => { e.preventDefault(); touchBoost = true; });
+    btnBoost.addEventListener("touchend", () => { touchBoost = false; });
+  }
 
-  btnFireLaser.addEventListener("touchstart", (e) => { e.preventDefault(); touchFire = true; });
-  btnFireLaser.addEventListener("touchend", () => { touchFire = false; });
-  btnFireMissile.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    if (player) firePlayerMissile(getLockedTarget() || findBestLockTarget(false));
-  });
+  // Dedicated Mobile Thumb Combat Pad (Attack Laser, Homing Missile, Boost, U-Turn, Skill Tray)
+  if (mobLaser) {
+    const startFire = (e) => { e.preventDefault(); window.SFX.ensure(); touchFire = true; mobLaser.classList.add("pressed"); };
+    const stopFire = () => { touchFire = false; mobLaser.classList.remove("pressed"); };
+    mobLaser.addEventListener("touchstart", startFire);
+    mobLaser.addEventListener("touchend", stopFire);
+    mobLaser.addEventListener("touchcancel", stopFire);
+    mobLaser.addEventListener("mousedown", startFire);
+    mobLaser.addEventListener("mouseup", stopFire);
+    mobLaser.addEventListener("mouseleave", stopFire);
+  }
+  if (mobMissile) {
+    const fireMis = (e) => {
+      e.preventDefault();
+      window.SFX.ensure();
+      if (player) firePlayerMissile(getLockedTarget() || findBestLockTarget(false));
+    };
+    mobMissile.addEventListener("touchstart", fireMis);
+    mobMissile.addEventListener("mousedown", fireMis);
+  }
+  if (mobBoost) {
+    const startB = (e) => { e.preventDefault(); touchBoost = true; mobBoost.classList.add("pressed"); };
+    const stopB = () => { touchBoost = false; mobBoost.classList.remove("pressed"); };
+    mobBoost.addEventListener("touchstart", startB);
+    mobBoost.addEventListener("touchend", stopB);
+    mobBoost.addEventListener("touchcancel", stopB);
+    mobBoost.addEventListener("mousedown", startB);
+    mobBoost.addEventListener("mouseup", stopB);
+    mobBoost.addEventListener("mouseleave", stopB);
+  }
+  if (mobUTurn) {
+    mobUTurn.addEventListener("touchstart", (e) => { e.preventDefault(); triggerUTurn(); });
+    mobUTurn.addEventListener("click", triggerUTurn);
+  }
+  if (mobSkillsToggle) {
+    mobSkillsToggle.addEventListener("click", toggleSkillsPanel);
+  }
 
   if (btnDiff) btnDiff.addEventListener("click", cycleDifficulty);
   if (titleDiffSelector) {
@@ -2819,10 +2939,7 @@
     btnMute.textContent = m ? "音效：關" : "音效：開";
   });
 
-  // Touch Virtual Joystick for mobile
-  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
-    touchPad.classList.remove("hidden");
-  }
+  // Virtual Flight Joystick (supports touch + mouse drag for mobile & emulator testing)
   touchPad.addEventListener("touchstart", (e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
@@ -2836,12 +2953,14 @@
       if (t.identifier === touchStick.id) updateTouchStick(t);
     }
   });
-  touchPad.addEventListener("touchend", () => {
+  const endStick = () => {
     touchStick.active = false;
     touchStick.x = 0;
     touchStick.y = 0;
     touchKnob.style.transform = "translate(0px, 0px)";
-  });
+  };
+  touchPad.addEventListener("touchend", endStick);
+  touchPad.addEventListener("touchcancel", endStick);
 
   function updateTouchStick(t) {
     const rect = touchPad.getBoundingClientRect();

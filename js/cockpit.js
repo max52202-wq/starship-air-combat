@@ -593,8 +593,12 @@ window.CockpitHUD = (function () {
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
 
-    // Bottom-right Holographic Tactical Radar
-    drawRadar(ctx, w - 34, h - 34, 24, state);
+    // Bottom-right Holographic Tactical Radar (tucked above thumb pad on portrait mobile!)
+    if (w < 260) {
+      drawRadar(ctx, w - 24, Math.round(h * 0.52), 18, state);
+    } else {
+      drawRadar(ctx, w - 34, h - 34, 24, state);
+    }
   }
 
   function render(ctx, w, h, state, project) {
